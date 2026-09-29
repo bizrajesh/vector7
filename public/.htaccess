@@ -1,0 +1,58 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Preferred host (SEO standard §3): https://vector7.in — www and http both 301 here in ONE hop.
+    RewriteCond %{HTTP_HOST} ^www\.vector7\.in$ [NC]
+    RewriteRule ^ https://vector7.in%{REQUEST_URI} [L,R=301]
+
+    # Force HTTPS for every other host (staging etc.). Behind Cloudflare use SSL mode "Full (strict)".
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Handle Authorization header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Remove trailing slashes (one convention: no trailing slash)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Block dotfiles (.env, .git) except .well-known
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+    # Send requests to the front controller
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Never serve PHP source or config backups
+<FilesMatch "\.(env|log|sql|bak|ini|sh|lock|json\.dist|md)$">
+    Require all denied
+</FilesMatch>
+<Files "site.webmanifest">
+    Require all granted
+</Files>
+
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    # Long-lived cache for versioned static assets
+    <FilesMatch "\.(css|js|woff2)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(png|svg|ico|webp)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml text/plain application/xml
+</IfModule>
+
+AddType application/manifest+json .webmanifest
