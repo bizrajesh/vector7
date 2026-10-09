@@ -130,7 +130,7 @@ class Plot extends Model
 
     public function publicUrl(): string
     {
-        return route('market.plot', ['project' => $this->project->slug, 'plotNo' => $this->plot_no]);
+        return route('market.plot', ['project' => $this->project->slug, 'plotNo' => strtolower($this->plot_no)]);
     }
 
     /** Change status and record history. */

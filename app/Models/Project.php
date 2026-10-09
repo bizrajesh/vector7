@@ -146,7 +146,7 @@ class Project extends Model
 
     public function layoutUrl(): ?string
     {
-        return $this->layout_file_id ? route('market.layout', $this->slug) : null;
+        return $this->layout_file_id ? route('market.layout', $this->slug).'?v='.$this->layout_file_id : null;
     }
 
     public function minPrice(): ?float
