@@ -74,6 +74,11 @@ class Project extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    public function decisionMaker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'decision_by');
+    }
+
     public function tenantRel(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');

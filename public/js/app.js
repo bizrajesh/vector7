@@ -515,12 +515,27 @@
     $$('[data-autosubmit]').forEach(function (el) { el.addEventListener('change', function () { el.form && el.form.submit(); }); });
   }
 
+  /* ---------- Editable grid → JSON (plot import preview; avoids max_input_vars limits) ---------- */
+  function initGrid() {
+    $$('form[data-grid-form]').forEach(function (form) {
+      $$('[data-grid-remove]', form).forEach(function (b) { b.addEventListener('click', function () { b.closest('tr').remove(); }); });
+      form.addEventListener('submit', function () {
+        var rows = $$('tr[data-grid-row]', form).map(function (tr) {
+          var o = {};
+          $$('[data-col]', tr).forEach(function (el) { o[el.getAttribute('data-col')] = el.value; });
+          return o;
+        });
+        $('input[name=rows_json]', form).value = JSON.stringify(rows);
+      });
+    });
+  }
+
   /* ---------- Print buttons ---------- */
   function initPrint() { $$('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); }); }
 
   document.addEventListener('DOMContentLoaded', function () {
     initSidebar(); initPublicNav(); initDropdowns(); initPasswords(); initWidths(); initConfirm(); initCopy(); initBulk();
     initRepeaters(); initEstimate(); initCalc(); initTooltips(); initPlotFilters(); initCarousels(); initReveal(); initCharts();
-    initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint();
+    initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid();
   });
 })();
