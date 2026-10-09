@@ -3,45 +3,31 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Plan extends Model
 {
-    use Auditable;
-
-    protected $fillable = [
-        'code', 'name', 'description', 'badge', 'price_monthly', 'price_yearly', 'trial_days',
-        'max_users', 'max_layouts', 'max_plots', 'max_storage_mb', 'features', 'status', 'sort_order',
-    ];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return [
-            'features' => 'array',
-            'price_monthly' => 'decimal:2',
-            'price_yearly' => 'decimal:2',
-        ];
+        return ['modules' => 'array', 'price' => 'decimal:2', 'is_active' => 'boolean', 'is_trial_default' => 'boolean'];
     }
 
-    public function tenants(): HasMany
+    public function limits(): HasMany { return $this->hasMany(PlanLimit::class); }
+
+    public function limit(string $key): int
     {
-        return $this->hasMany(Tenant::class);
+        $row = $this->relationLoaded('limits') ? $this->limits->firstWhere('key', $key) : $this->limits()->where('key', $key)->first();
+        return $row ? (int) $row->value : 0;
     }
 
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('status', 'active')->orderBy('sort_order');
-    }
-
-    public function hasFeature(string $feature): bool
-    {
-        return (bool) ($this->features[$feature] ?? false);
-    }
-
-    public function price(string $cycle): string
-    {
-        return $cycle === 'yearly' ? $this->price_yearly : $this->price_monthly;
-    }
+    public function hasModule(string $module): bool { return in_array($module, $this->modules ?? [], true); }
 }

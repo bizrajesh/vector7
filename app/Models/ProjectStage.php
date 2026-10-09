@@ -2,62 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-class ProjectStage extends TenantModel
+class ProjectStage extends Model
 {
-    protected $fillable = [
-        'stage_no', 'seq_no', 'name', 'description', 'stage_type', 'is_mandatory',
-        'budget_cost', 'duration_days', 'owner_id', 'planned_start', 'planned_end',
-    ];
+    use BelongsToTenant;
+
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return [
-            'is_mandatory' => 'boolean',
-            'planned_start' => 'date',
-            'planned_end' => 'date',
-            'actual_start' => 'date',
-            'actual_end' => 'date',
-        ];
+        return ['planned_start' => 'date', 'planned_end' => 'date', 'actual_start' => 'date', 'actual_end' => 'date'];
     }
 
-    public function layout(): BelongsTo
-    {
-        return $this->belongsTo(Layout::class);
-    }
-
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'owner_id');
-    }
-
-    public function tasks(): HasMany
-    {
-        return $this->hasMany(ProjectTask::class)->orderBy('task_no');
-    }
-
-    public function dependsOn(): BelongsToMany
-    {
-        return $this->belongsToMany(ProjectStage::class, 'project_stage_links', 'project_stage_id', 'depends_on_id')
-            ->withPivot('tenant_id');
-    }
-
-    public function expenses(): HasMany
-    {
-        return $this->hasMany(LedgerEntry::class)->where('direction', 'out');
-    }
-
-    public function actualCost(): float
-    {
-        return (float) $this->expenses()->sum('amount');
-    }
-
-    public function isOverdue(): bool
-    {
-        return $this->status !== 'completed' && $this->status !== 'skipped'
-            && $this->planned_end !== null && $this->planned_end->isPast();
-    }
+    public function project(): BelongsTo { return $this->belongsTo(Project::class); }
+    public function subtasks(): HasMany { return $this->hasMany(ProjectSubtask::class)->orderBy('id'); }
 }

@@ -6,12 +6,15 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Subscription plans are created by the schema script. Nothing else is
-     * seeded in production; use DemoSeeder on staging only.
-     */
     public function run(): void
     {
-        //
+        $this->call([
+            PlatformSeeder::class,
+            MasterSeeder::class,
+            SroSeeder::class,
+        ]);
+        if (filter_var(env('SEED_DEMO', true), FILTER_VALIDATE_BOOLEAN)) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }

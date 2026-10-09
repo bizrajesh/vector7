@@ -5,30 +5,33 @@ namespace App\Models\Concerns;
 use App\Services\AuditLogger;
 
 /**
- * Writes an audit_logs row on create/update/delete (OWASP A09).
- * Attributes listed in $hidden (passwords, encrypted IDs) are never logged.
+ * Writes an audit_logs row (who, what, when, before/after) for create, update and delete.
+ * Hidden attributes (passwords, tokens, secrets) are never written.
  */
 trait Auditable
 {
     public static function bootAuditable(): void
     {
-        static::created(fn ($model) => app(AuditLogger::class)->model('created', $model, [], $model->auditValues($model->getAttributes())));
-        static::updated(function ($model) {
-            $changed = $model->getChanges();
-            unset($changed['updated_at']);
-            if ($changed === []) {
+        static::created(fn ($m) => AuditLogger::model('created', $m, null, $m->auditPayload($m->getAttributes())));
+
+        static::updated(function ($m) {
+            $changes = $m->getChanges();
+            unset($changes['updated_at']);
+            if (! $changes) {
                 return;
             }
-            $old = array_intersect_key($model->getOriginal(), $changed);
-            app(AuditLogger::class)->model('updated', $model, $model->auditValues($old), $model->auditValues($changed));
+            $before = array_intersect_key($m->getOriginal(), $changes);
+            $action = array_key_exists('status', $changes) ? 'status_changed' : 'updated';
+            AuditLogger::model($action, $m, $m->auditPayload($before), $m->auditPayload($changes));
         });
-        static::deleted(fn ($model) => app(AuditLogger::class)->model('deleted', $model, $model->auditValues($model->getAttributes()), []));
+
+        static::deleted(fn ($m) => AuditLogger::model('deleted', $m, $m->auditPayload($m->getAttributes()), null));
     }
 
-    protected function auditValues(array $values): array
+    public function auditPayload(array $attributes): array
     {
-        $blocked = array_merge($this->getHidden(), ['password', 'remember_token', 'aadhaar', 'pan', 'bank_details']);
+        $hidden = array_merge($this->getHidden(), ['password', 'remember_token', 'access_token', 'pan_encrypted']);
 
-        return array_diff_key($values, array_flip($blocked));
+        return array_diff_key($attributes, array_flip($hidden));
     }
 }

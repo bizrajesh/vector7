@@ -2,18 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-class Broker extends TenantModel
+class Broker extends Model
 {
-    use SoftDeletes;
+    use BelongsToTenant, Auditable;
 
-    protected $fillable = ['name', 'phone', 'email', 'pan', 'commission_pct', 'is_active'];
-
-    protected $hidden = ['pan'];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['pan' => 'encrypted', 'is_active' => 'boolean'];
+        return ['is_active' => 'boolean'];
     }
 }

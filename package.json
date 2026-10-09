@@ -1,15 +1,11 @@
 {
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "build:css": "tailwindcss -c tailwind.config.cjs -i resources/css/app.css -o public/css/app.css --minify",
-        "watch:css": "tailwindcss -c tailwind.config.cjs -i resources/css/app.css -o public/css/app.css --watch",
-        "build:vendor": "node scripts/copy-vendor.mjs",
-        "build": "npm run build:vendor && npm run build:css"
-    },
-    "devDependencies": {
-        "@fontsource/plus-jakarta-sans": "^5.1.0",
-        "chart.js": "^4.4.4",
-        "tailwindcss": "^3.4.14"
-    }
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i resources/css/app.css -o public/css/app.css --minify",
+    "watch:css": "tailwindcss -i resources/css/app.css -o public/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.9",
+    "tailwindcss": "^3.4.17"
+  }
 }

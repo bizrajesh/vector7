@@ -1,132 +1,147 @@
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 400; font-display: swap; src: url('../fonts/plus-jakarta-sans-400.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 500; font-display: swap; src: url('../fonts/plus-jakarta-sans-500.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 600; font-display: swap; src: url('../fonts/plus-jakarta-sans-600.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 700; font-display: swap; src: url('../fonts/plus-jakarta-sans-700.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 800; font-display: swap; src: url('../fonts/plus-jakarta-sans-800.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2'); }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --v7-navy: #0B1B33;
+  --v7-teal: #0F8F84;
+  --v7-teal-text: #0B746B;
+  --v7-teal-light: #B0DAD6;
+  --v7-gold: #E0B04A;
+  --v7-muted: #5B6677;
+  --v7-caption: #929CAA;
+  --v7-page: #EEF1F4;
+  --v7-card: #FFFFFF;
+}
+
 @layer base {
-    html { -webkit-text-size-adjust: 100%; }
-    body { @apply bg-ground font-sans text-ink antialiased; font-size: 15px; }
-    h1, h2, h3 { @apply tracking-tight; }
-    a { @apply text-teal; }
-    a:hover { @apply text-teal-700; }
-    :focus-visible { outline: 3px solid #88A47C; outline-offset: 2px; }
-    .num { font-variant-numeric: tabular-nums; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-page text-navy font-sans antialiased; }
+  h1, h2, h3, h4 { @apply font-bold tracking-tight text-navy; }
+  a { @apply text-teal-700; }
+  a:hover { @apply text-teal-800; }
+  :focus-visible { outline: 3px solid #0F8F84; outline-offset: 2px; border-radius: 6px; }
+  [x-cloak], .hidden-js { display: none !important; }
+  table { @apply w-full text-sm; }
+  ::selection { background: #B0DAD6; color: #0B1B33; }
 }
 
 @layer components {
-    /* Buttons */
-    .btn { @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60; }
-    .btn-primary { @apply btn bg-teal text-white hover:bg-teal-700 hover:text-white; }
-    .btn-navy { @apply btn bg-navy text-white hover:bg-navy-900 hover:text-white; }
-    .btn-outline { @apply btn border border-teal bg-white text-teal hover:bg-teal-50; }
-    .btn-ghost { @apply btn border border-line bg-white text-ink hover:bg-cream-100 hover:text-ink; }
-    .btn-danger { @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50; }
-    .btn-sm { @apply min-h-[36px] rounded-lg px-3 text-[13px]; }
+  /* Cards & layout */
+  .card { @apply bg-white rounded-card shadow-card; }
+  .card-pad { @apply p-4 sm:p-6; }
+  .section-title { @apply text-lg font-bold text-navy; }
+  .muted { @apply text-muted; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[0.2em] text-teal-700; }
+  .skip-link { @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lift; }
 
-    /* Surfaces */
-    .card { @apply rounded-2xl border border-line bg-white; }
-    .card-pad { @apply card p-4 sm:p-5; }
-    .kpi-label { @apply text-[13px] font-medium text-ink-muted; }
-    .kpi-value { @apply num text-2xl font-bold tracking-tight sm:text-[28px]; }
-    .section-title { @apply text-base font-bold; }
+  /* Buttons */
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap no-underline; }
+  .btn-primary { @apply btn bg-navy text-white hover:bg-navy-600 hover:text-white; }
+  .btn-teal { @apply btn bg-teal-700 text-white hover:bg-teal-800 hover:text-white; }
+  .btn-light { @apply btn bg-white text-navy ring-1 ring-inset ring-navy-100 hover:bg-page hover:text-navy; }
+  .btn-ghost { @apply btn text-navy hover:bg-page hover:text-navy; }
+  .btn-danger { @apply btn bg-red-700 text-white hover:bg-red-800 hover:text-white; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-pill { @apply rounded-full px-6; }
 
-    /* Forms */
-    .label { @apply mb-1.5 block text-[12.5px] font-semibold text-ink-2; }
-    .input { @apply block min-h-[46px] w-full rounded-xl border border-[#D6D2BD] bg-white px-3.5 text-[15px] text-ink placeholder:text-ink-muted/70 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/20; }
-    .input-error { @apply border-red-400; }
-    .help { @apply mt-1 text-xs text-ink-muted; }
-    .error { @apply mt-1 text-xs font-medium text-red-700; }
-    .check { @apply h-5 w-5 rounded border-[#D6D2BD] text-teal focus:ring-teal; }
+  /* Forms */
+  .label { @apply block text-sm font-semibold text-navy mb-1; }
+  .input { @apply block w-full rounded-lg border-navy-100 bg-white text-sm text-navy shadow-sm focus:border-teal focus:ring-teal placeholder:text-muted-light; }
+  .input-error { @apply border-red-600 focus:border-red-600 focus:ring-red-600; }
+  .hint { @apply mt-1 text-xs text-muted; }
+  .error { @apply mt-1 text-xs font-semibold text-red-700; }
+  .checkbox { @apply rounded border-navy-100 text-teal-700 focus:ring-teal; }
 
-    /* Tables → cards on phones */
-    .table { @apply w-full border-collapse text-sm; }
-    .table th { @apply pb-2.5 text-left text-xs font-semibold text-ink-muted; }
-    .table td { @apply border-t border-line-soft py-3 pr-3 align-middle; }
+  /* Tables */
+  .table-wrap { @apply overflow-x-auto -mx-4 sm:mx-0; }
+  .tbl { @apply min-w-full divide-y divide-navy-50; }
+  .tbl th { @apply px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-muted bg-page/60 whitespace-nowrap; }
+  .tbl td { @apply px-3 py-2.5 align-top text-navy; }
+  .tbl tbody tr { @apply hover:bg-page/50; }
+  .tbl .num { @apply text-right tabular-nums whitespace-nowrap; }
 
-    /* Status badges (fixed colours across the app) */
-    .badge { @apply inline-flex h-[22px] items-center whitespace-nowrap rounded-full px-2.5 text-[11.5px] font-semibold; }
-    .badge-av { @apply badge bg-[#E3F2EA] text-[#1F6B45]; }
-    .badge-bk { @apply badge bg-[#FBEFD5] text-[#7A4F00]; }
-    .badge-rs { @apply badge bg-[#ECEBE7] text-[#4F5955]; }
-    .badge-os { @apply badge bg-[#E2ECF8] text-[#1D4F91]; }
-    .badge-ror { @apply badge bg-[#EEE7F8] text-[#553590]; }
-    .badge-reg { @apply badge bg-[#E6E7FA] text-[#3730A3]; }
-    .badge-sold { @apply badge bg-navy-100 text-navy; }
-    .badge-od { @apply badge bg-[#FBE4E2] text-[#A12622]; }
+  /* Badges */
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap; }
+  .badge-teal { @apply badge bg-teal-50 text-teal-800; }
+  .badge-navy { @apply badge bg-navy-50 text-navy; }
+  .badge-amber { @apply badge bg-amber-100 text-amber-900; }
+  .badge-red { @apply badge bg-red-100 text-red-800; }
+  .badge-blue { @apply badge bg-blue-100 text-blue-800; }
+  .badge-purple { @apply badge bg-purple-100 text-purple-800; }
+  .badge-gray { @apply badge bg-slate-100 text-slate-700; }
 
-    /* Plot tiles */
-    .tile { @apply flex h-14 flex-col items-center justify-center rounded-[10px] border-[1.5px] text-center no-underline transition hover:-translate-y-px hover:shadow-card; }
-    .tile strong { @apply text-sm font-bold leading-tight; }
-    .tile span { @apply text-[10.5px] font-medium opacity-80; }
-    .tile-av { @apply tile border-[#9CCFB2] bg-[#E3F2EA] text-[#1F6B45] hover:text-[#1F6B45]; }
-    .tile-bk { @apply tile border-[#E6C27A] bg-[#FBEFD5] text-[#7A4F00] hover:text-[#7A4F00]; }
-    .tile-os { @apply tile border-[#A3BFE3] bg-[#E2ECF8] text-[#1D4F91] hover:text-[#1D4F91]; }
-    .tile-ror { @apply tile border-[#C3AEE6] bg-[#EEE7F8] text-[#553590] hover:text-[#553590]; }
-    .tile-reg { @apply tile border-[#B3B5EE] bg-[#E6E7FA] text-[#3730A3] hover:text-[#3730A3]; }
-    .tile-sold { @apply tile border-navy bg-navy text-white hover:text-white; }
-    .tile-rs { @apply tile border-[#C9C6BE] bg-[#ECEBE7] text-[#4F5955] hover:text-[#4F5955]; }
+  /* Plot status colours (map, badges, charts) */
+  .st-available { @apply bg-teal-50 text-teal-800; }
+  .st-booked { @apply bg-amber-100 text-amber-900; }
+  .st-sale_init { @apply bg-blue-100 text-blue-800; }
+  .st-ror { @apply bg-violet-100 text-violet-800; }
+  .st-ror_init { @apply bg-purple-100 text-purple-800; }
+  .st-ror_completed { @apply bg-indigo-100 text-indigo-800; }
+  .st-sold { @apply bg-slate-200 text-slate-800; }
+  .st-blocked { @apply bg-red-100 text-red-800; }
+  .dot { @apply inline-block h-2.5 w-2.5 rounded-full; }
 
-    /* Navigation */
-    .nav-link { @apply flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium text-[#C9D2E6] no-underline hover:bg-white/10 hover:text-white; }
-    .nav-link.active { @apply bg-white/[0.12] text-white; }
-    .tab-link { @apply flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-ink-muted no-underline; }
-    .tab-link.active { @apply text-teal; }
-    .pill { @apply inline-flex h-9 items-center whitespace-nowrap rounded-full border border-line bg-white px-3.5 text-[13px] font-semibold text-ink-2 no-underline hover:text-ink; }
-    .pill.active { @apply border-teal bg-teal text-white hover:text-white; }
-    .subtab { @apply inline-flex h-10 items-center whitespace-nowrap border-b-2 border-transparent px-1 text-sm font-semibold text-ink-muted no-underline hover:text-ink; }
-    .subtab.active { @apply border-teal text-teal; }
+  /* Progress bars (width set from data-w by app.js — no inline styles, CSP-safe) */
+  .bar { @apply h-2 w-full rounded-full bg-navy-50 overflow-hidden; }
+  .bar > span { @apply block h-full rounded-full bg-teal transition-[width] duration-700; width: 0; }
+  .bar.amber > span { @apply bg-amber-500; }
+  .bar.red > span { @apply bg-red-600; }
 
-    .progress { @apply h-1.5 overflow-hidden rounded-full bg-line-soft; }
-    .progress > span { @apply block h-full rounded-full bg-teal; }
-}
+  /* Workspace navigation */
+  .nav-link { @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-navy-100 no-underline hover:bg-white/10 hover:text-white; }
+  .nav-link.active { @apply bg-white/10 text-white; }
+  .nav-link.active svg { @apply text-teal-200; }
+  .nav-group { @apply px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-teal-200; }
 
-@media print {
-    .no-print { display: none !important; }
-    body { background: #fff; font-size: 12pt; }
-}
+  /* Flash */
+  .flash { @apply rounded-lg px-4 py-3 text-sm font-medium flex items-start gap-3; }
+  .flash-ok { @apply flash bg-teal-50 text-teal-800 ring-1 ring-teal-100; }
+  .flash-err { @apply flash bg-red-50 text-red-800 ring-1 ring-red-200; }
+  .flash-warn { @apply flash bg-amber-50 text-amber-900 ring-1 ring-amber-200; }
 
-/* ------------------------------------------------------------------
- * Motion (public pages). Everything is decorative and switched off for
- * users who prefer reduced motion.
- * ------------------------------------------------------------------ */
-@keyframes fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(136, 164, 124, .7); } 70% { box-shadow: 0 0 0 10px rgba(136, 164, 124, 0); } 100% { box-shadow: 0 0 0 0 rgba(136, 164, 124, 0); } }
-@keyframes draw { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
-@keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
-@keyframes tile-cycle {
-    0%, 30%   { background: #E3F2EA; border-color: #9CCFB2; color: #1F6B45; }
-    36%, 62%  { background: #FBEFD5; border-color: #E6C27A; color: #7A4F00; }
-    68%, 100% { background: #1C315E; border-color: #1C315E; color: #fff; }
-}
-@keyframes slide-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  /* Tabs */
+  .tabs { @apply flex gap-1 overflow-x-auto border-b border-navy-50; }
+  .tab { @apply px-4 py-2.5 text-sm font-semibold text-muted border-b-2 border-transparent no-underline whitespace-nowrap hover:text-navy; }
+  .tab.active { @apply text-navy border-teal; }
 
-@layer components {
-    .anim-up { animation: fade-up .8s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d, 0ms); }
-    .anim-in { animation: fade-in 1s ease both; animation-delay: var(--d, 0ms); }
-    .anim-float { animation: float 6s ease-in-out infinite; }
-    .anim-pop { animation: pop .5s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d, 0ms); }
-    .live-dot { @apply inline-block h-2.5 w-2.5 rounded-full bg-sage; animation: pulse-ring 2s infinite; }
-    .draw-line { stroke-dasharray: 600; animation: draw 2.4s ease-out .4s both; }
-    .tile-live { animation: pop .5s cubic-bezier(.2, .7, .2, 1) both, tile-cycle 9s ease-in-out infinite; animation-delay: var(--d, 0ms), var(--c, 0ms); }
-    .btn-shine { background-image: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .35) 50%, transparent 65%); background-size: 200% 100%; animation: shimmer 3.5s linear infinite; }
-    .lift { @apply transition duration-300; }
-    .lift:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(28, 49, 94, .12); }
-    .step-line { transform-origin: left; animation: slide-x 1.2s ease-out both; animation-delay: var(--d, 0ms); }
-}
+  /* Marketplace plot cards */
+  .plot-card { @apply relative card p-4 transition duration-300 hover:-translate-y-1 hover:shadow-lift focus-within:shadow-lift; }
+  .ribbon { @apply absolute -top-2 right-3 rounded-md bg-gold px-2 py-0.5 text-[11px] font-extrabold tracking-wider text-navy shadow; }
 
-/* Scroll-driven reveal where supported (no JavaScript, no flicker); elsewhere content is simply visible. */
-@supports (animation-timeline: view()) {
-    .reveal { animation: fade-up linear both; animation-timeline: view(); animation-range: entry 0% cover 22%; }
+  /* Tooltip */
+  .v7-tip { @apply fixed z-[60] w-72 max-w-[calc(100vw-24px)] rounded-xl bg-navy p-4 text-sm text-white shadow-lift pointer-events-auto; }
+  .v7-tip a { @apply text-teal-200 font-semibold; }
+  .v7-tip dt { @apply text-navy-100 text-xs; }
+  .v7-tip dd { @apply font-semibold; }
+
+  /* Reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* Carousel */
+  .carousel { @apply relative overflow-hidden; }
+  .carousel-track { @apply flex transition-transform duration-700 ease-out; }
+  .carousel-slide { @apply w-full shrink-0; }
+
+  /* Plot map */
+  .plot-map svg .plot-shape { cursor: pointer; transition: opacity .2s; }
+  .plot-map svg .plot-shape:hover, .plot-map svg .plot-shape:focus { opacity: .8; outline: none; stroke: #0B1B33; stroke-width: 2; }
+  .w-pct { width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
 }

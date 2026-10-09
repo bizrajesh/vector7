@@ -2,20 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class SubscriptionInvoice extends Model
 {
-    protected $fillable = ['tenant_id', 'subscription_id', 'invoice_no', 'amount', 'gst_amount', 'total', 'status', 'gateway_payment_id', 'paid_at'];
+    use BelongsToTenant, Auditable;
+
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['paid_at' => 'datetime'];
+        return ['period_start' => 'date', 'period_end' => 'date', 'paid_at' => 'datetime'];
     }
 
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
+    public function plan(): BelongsTo { return $this->belongsTo(Plan::class); }
+    public function subscription(): BelongsTo { return $this->belongsTo(Subscription::class); }
 }

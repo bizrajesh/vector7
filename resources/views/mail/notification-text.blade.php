@@ -1,5 +1,0 @@
-{{ $subjectLine }}
-
-{{ $body }}
-
-— Vector7

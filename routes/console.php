@@ -1,4 +1,8 @@
 <?php
 
-// Scheduled tasks are declared in bootstrap/app.php (withSchedule).
-// Commands are auto-discovered from app/Console/Commands.
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');

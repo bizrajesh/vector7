@@ -3,81 +3,83 @@
 namespace App\Providers;
 
 use App\Models\User;
-use App\Services\Payments\PaymentGateway;
-use App\Services\Payments\RazorpayGateway;
-use App\Services\Settings;
-use App\Support\SecurityLog;
-use App\Support\TenantContext;
-use Illuminate\Auth\Events\Failed;
-use Illuminate\Auth\Events\Lockout;
-use Illuminate\Auth\Events\Login;
+use App\Services\AppSettings;
+use App\Support\Format;
+use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // One tenant context and one settings cache per request / job.
-        $this->app->scoped(TenantContext::class);
-        $this->app->scoped(Settings::class);
-        $this->app->bind(PaymentGateway::class, RazorpayGateway::class);
+        $this->app->singleton(Tenancy::class);
     }
 
     public function boot(): void
     {
-        if ($this->app->isProduction()) {
+        if (env('FORCE_HTTPS', false)) {
             URL::forceScheme('https');
         }
 
-        // Surface mass-assignment mistakes during development instead of silently dropping fields.
-        Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+        Paginator::defaultView('partials.pagination');
 
-        // Password policy (OWASP A07). "uncompromised" checks the HIBP k-anonymity API in production.
-        Password::defaults(function () {
-            $rule = Password::min(10)->letters()->mixedCase()->numbers()->symbols();
+        // "module.action" abilities resolve through the role permission matrix.
+        Gate::before(function ($user, string $ability) {
+            if ($user instanceof User && str_contains($ability, '.')) {
+                return $user->hasPerm($ability) ? true : null;
+            }
 
-            return $this->app->isProduction() ? $rule->uncompromised() : $rule;
+            return null;
         });
 
-        // Brute-force protection (OWASP A07).
-        RateLimiter::for('login', fn (Request $request) => [
-            Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
-            Limit::perMinute(20)->by($request->ip()),
-        ]);
-        RateLimiter::for('register', fn (Request $request) => Limit::perHour(5)->by($request->ip()));
-        RateLimiter::for('password', fn (Request $request) => Limit::perMinute(3)->by($request->ip()));
-        RateLimiter::for('writes', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
-        RateLimiter::for('otp', fn (Request $request) => [
-            Limit::perMinutes(10, 3)->by(strtolower((string) ($request->input('email') ?? $request->session()->get('online_booking.email') ?? $request->session()->get('track_email'))).'|'.$request->ip()),
-            Limit::perHour(10)->by($request->ip()),
-        ]);
-        RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinutes(10, 10)->by($request->ip()));
-        RateLimiter::for('public-forms', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
-        RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
+        Blade::directive('inr', fn ($e) => "<?php echo e(\App\Support\Format::inr($e)); ?>");
+        Blade::directive('date', fn ($e) => "<?php echo e(\App\Support\Format::date($e)); ?>");
 
-        // Every permission in the matrix becomes a Gate (usable as @can in Blade).
-        foreach (collect(config('vector7.permissions'))->flatten()->unique() as $permission) {
-            Gate::define($permission, fn (User $user) => $user->hasPermission($permission));
+        $this->rateLimits();
+        $this->mailFromSettings();
+    }
+
+    private function rateLimits(): void
+    {
+        $key = fn (Request $r) => $r->ip().'|'.strtolower((string) $r->input('email'));
+        RateLimiter::for('login', fn (Request $r) => [Limit::perMinute(10)->by($key($r)), Limit::perMinute(30)->by($r->ip())]);
+        RateLimiter::for('forgot', fn (Request $r) => Limit::perMinute(5)->by($r->ip()));
+        RateLimiter::for('register', fn (Request $r) => Limit::perHour(20)->by($r->ip()));
+        RateLimiter::for('genpass', fn (Request $r) => Limit::perMinute(20)->by($r->user()?->id ?: $r->ip()));
+        RateLimiter::for('enquiry', fn (Request $r) => Limit::perHour(20)->by($r->ip()));
+        RateLimiter::for('ai', fn (Request $r) => Limit::perMinute(10)->by($r->user()?->id ?: $r->ip()));
+    }
+
+    /** SMTP settings saved in App Settings override .env. */
+    private function mailFromSettings(): void
+    {
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
+            $host = AppSettings::get('smtp.host');
+            if ($host && ! app()->runningUnitTests()) {
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => $host,
+                    'mail.mailers.smtp.port' => (int) AppSettings::get('smtp.port', 465),
+                    'mail.mailers.smtp.scheme' => AppSettings::get('smtp.encryption') === 'ssl' ? 'smtps' : 'smtp',
+                    'mail.mailers.smtp.username' => AppSettings::get('smtp.username'),
+                    'mail.mailers.smtp.password' => AppSettings::get('smtp.password'),
+                    'mail.from.address' => AppSettings::get('smtp.from_address', config('mail.from.address')),
+                    'mail.from.name' => AppSettings::get('smtp.from_name', 'vector7'),
+                ]);
+            }
+        } catch (\Throwable) {
+            // database not ready (first install)
         }
-
-        // Security event logging (OWASP A09).
-        Event::listen(Failed::class, fn (Failed $e) => SecurityLog::warning('login_failed', ['email_hash' => hash('sha256', strtolower((string) ($e->credentials['email'] ?? '')))]));
-        Event::listen(Lockout::class, fn () => SecurityLog::warning('login_lockout'));
-        Event::listen(Login::class, function (Login $e) {
-            SecurityLog::info('login_success', ['user_id' => $e->user->getAuthIdentifier()]);
-            $e->user->forceFill(['last_login_at' => now(), 'last_login_ip' => request()->ip()])->saveQuietly();
-        });
-
-        Blade::directive('inr', fn ($expression) => "<?php echo e(\\App\\Support\\Money::inr({$expression})); ?>");
-        Blade::directive('inrShort', fn ($expression) => "<?php echo e(\\App\\Support\\Money::short({$expression})); ?>");
     }
 }

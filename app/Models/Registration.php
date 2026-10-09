@@ -2,40 +2,34 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-class Registration extends TenantModel
+class Registration extends Model
 {
-    protected $fillable = ['document_writer_id', 'document_writer_name', 'sub_registrar_office_id', 'planned_date'];
+    use BelongsToTenant, Auditable;
+
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['planned_date' => 'date', 'registration_date' => 'date', 'completed_at' => 'datetime'];
+        return ['checklist' => 'array', 'registration_date' => 'date', 'registered_doc_date' => 'date', 'submitted_at' => 'datetime', 'completed_at' => 'datetime', 'sold_at' => 'datetime', 'disclaimer_accepted_at' => 'datetime'];
     }
 
-    public function plot(): BelongsTo
-    {
-        return $this->belongsTo(Plot::class);
-    }
-
-    public function sale(): BelongsTo
-    {
-        return $this->belongsTo(Sale::class);
-    }
-
-    public function writer(): BelongsTo
-    {
-        return $this->belongsTo(DocumentWriter::class, 'document_writer_id')->withTrashed();
-    }
-
-    public function office(): BelongsTo
-    {
-        return $this->belongsTo(SubRegistrarOffice::class, 'sub_registrar_office_id')->withTrashed();
-    }
-
-    public function items(): HasMany
-    {
-        return $this->hasMany(RegistrationChecklistItem::class)->orderBy('sort_order');
-    }
+    public const STATUSES = ['draft' => 'Draft', 'ror_init' => 'ROR-Init', 'ror_completed' => 'ROR-Completed', 'sold' => 'Sold'];
+    public function plot(): BelongsTo { return $this->belongsTo(Plot::class); }
+    public function project(): BelongsTo { return $this->belongsTo(Project::class); }
+    public function sale(): BelongsTo { return $this->belongsTo(Sale::class); }
+    public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
+    public function sro(): BelongsTo { return $this->belongsTo(Sro::class); }
+    public function parties(): HasMany { return $this->hasMany(RegistrationParty::class); }
+    public function witnesses(): HasMany { return $this->hasMany(RegistrationWitness::class); }
+    public function files(): MorphMany { return $this->morphMany(StorageFile::class, 'attachable'); }
 }

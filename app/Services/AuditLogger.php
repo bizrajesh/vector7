@@ -3,37 +3,63 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
-use App\Support\TenantContext;
+use App\Models\Customer;
+use App\Models\User;
+use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class AuditLogger
 {
-    public function __construct(private readonly TenantContext $context) {}
-
-    public function model(string $action, Model $model, array $old, array $new): void
+    public static function model(string $action, Model $model, ?array $before, ?array $after): void
     {
-        $this->write($action, $model::class, $model->getKey(), $old, $new, $model->getAttribute('tenant_id'));
+        self::log($action, $model, $before, $after, $model->getAttribute('tenant_id'));
     }
 
-    public function event(string $action, array $data = [], ?int $tenantId = null): void
+    public static function log(string $action, ?Model $subject = null, ?array $before = null, ?array $after = null, ?int $tenantId = null): void
     {
-        $this->write($action, null, null, [], $data, $tenantId);
-    }
-
-    private function write(string $action, ?string $type, mixed $id, array $old, array $new, mixed $tenantId): void
-    {
-        $request = request();
+        [$type, $id, $name] = self::actor();
+        $request = app()->runningInConsole() && ! app()->runningUnitTests() ? null : request();
 
         AuditLog::create([
-            'tenant_id' => $tenantId ?? $this->context->id(),
-            'user_id' => auth()->id(),
+            'tenant_id' => $tenantId ?? app(Tenancy::class)->id(),
+            'actor_type' => $type,
+            'actor_id' => $id,
+            'actor_name' => $name,
             'action' => $action,
-            'auditable_type' => $type ? class_basename($type) : null,
-            'auditable_id' => $id,
-            'old_values' => $old ?: null,
-            'new_values' => $new ?: null,
-            'ip_address' => $request?->ip(),
-            'user_agent' => substr((string) $request?->userAgent(), 0, 255),
+            'auditable_type' => $subject ? class_basename($subject) : null,
+            'auditable_id' => $subject?->getKey(),
+            'before' => $before ? self::clean($before) : null,
+            'after' => $after ? self::clean($after) : null,
+            'ip' => $request?->ip(),
+            'user_agent' => $request ? substr((string) $request->userAgent(), 0, 255) : null,
         ]);
+    }
+
+    private static function actor(): array
+    {
+        $user = Auth::guard('web')->user();
+        if ($user instanceof User) {
+            return ['user', $user->id, $user->name];
+        }
+        $customer = Auth::guard('customer')->user();
+        if ($customer instanceof Customer) {
+            return ['customer', $customer->id, $customer->name];
+        }
+
+        return ['system', null, 'System'];
+    }
+
+    private static function clean(array $data): array
+    {
+        foreach ($data as $k => $v) {
+            if ($v instanceof \DateTimeInterface) {
+                $data[$k] = $v->format('Y-m-d H:i:s');
+            } elseif (is_string($v) && strlen($v) > 2000) {
+                $data[$k] = substr($v, 0, 2000).'…';
+            }
+        }
+
+        return $data;
     }
 }

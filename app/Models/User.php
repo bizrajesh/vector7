@@ -2,92 +2,129 @@
 
 namespace App\Models;
 
-use App\Enums\Role;
 use App\Models\Concerns\Auditable;
-use App\Support\TenantContext;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\BelongsToTenant;
+use App\Services\Notify;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable implements MustVerifyEmail
+/**
+ * Staff user. tenant_id NULL = App user (App Admin / App Manager);
+ * otherwise a tenant user restricted to that tenant.
+ */
+class User extends Authenticatable
 {
-    use Auditable;
-    use Notifiable;
-    use SoftDeletes;
+    use Auditable, BelongsToTenant, Notifiable;
 
-    // role, status, tenant_id and links are set explicitly by services, never mass-assigned.
-    protected $fillable = ['name', 'email', 'phone', 'password'];
+    protected $guarded = ['id'];
+
+    protected $attributes = ['is_active' => true, 'must_change_password' => false, 'failed_logins' => 0];
 
     protected $hidden = ['password', 'remember_token'];
+
+    private ?array $permCache = null;
 
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_login_at' => 'datetime',
             'password' => 'hashed',
-            'role' => Role::class,
+            'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
+            'locked_until' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 
-    public function tenant(): BelongsTo
+    public function role(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Role::class);
     }
 
-    public function shareholder(): BelongsTo
+    public function groups(): BelongsToMany
     {
-        return $this->belongsTo(Shareholder::class);
+        return $this->belongsToMany(NotificationGroup::class);
     }
 
-    public function customer(): BelongsTo
+    public function scopeOfTenant(Builder $q, ?int $tenantId): Builder
     {
-        return $this->belongsTo(Customer::class);
+        return $q->where('tenant_id', $tenantId);
     }
 
-    /** Users of the tenant in context only (users are not globally scoped because login needs them). */
-    public function scopeInCurrentTenant(Builder $query): Builder
+    public function isAppUser(): bool
     {
-        return $query->where('tenant_id', app(TenantContext::class)->id() ?? 0);
+        return $this->tenant_id === null;
     }
 
-    public function isSuperAdmin(): bool
+    public function baseRole(): string
     {
-        return $this->role === Role::SuperAdmin && $this->tenant_id === null;
+        return $this->role?->base_role ?? '';
     }
 
-    public function isActive(): bool
+    public function isAppAdmin(): bool
     {
-        return $this->status === 'active';
+        return $this->baseRole() === 'app_admin';
     }
 
-    public function hasRole(string ...$roles): bool
+    public function isTenantAdmin(): bool
     {
-        return in_array($this->role->value, $roles, true);
+        return $this->baseRole() === 'tenant_admin';
     }
 
-    public function hasPermission(string $permission): bool
+    /** Admin = App Admin or Tenant Admin (sees unmasked PAN, approves refunds). */
+    public function isAdmin(): bool
     {
-        return in_array($permission, config('vector7.permissions.'.$this->role->value, []), true);
+        return in_array($this->baseRole(), ['app_admin', 'tenant_admin'], true);
+    }
+
+    public function hasPerm(string $key): bool
+    {
+        if ($this->permCache === null) {
+            $this->permCache = array_flip($this->role?->permissionKeys() ?? []);
+        }
+
+        return isset($this->permCache[$key]);
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_until !== null && $this->locked_until->isFuture();
     }
 
     public function homeRoute(): string
     {
-        return match ($this->role) {
-            Role::SuperAdmin => route('platform.dashboard'),
-            Role::Shareholder => route('portal.shareholder'),
-            Role::Customer => route('portal.customer'),
-            default => route('app.dashboard'),
-        };
+        return $this->isAppUser() ? route('app.dashboard') : route('ws.dashboard');
     }
 
-    public function initials(): string
+    public function sendPasswordResetNotification($token): void
     {
-        $parts = preg_split('/\s+/', trim($this->name));
+        Notify::send('password_reset', [$this->email], [
+            'name' => $this->name,
+            'link' => route('password.reset', ['token' => $token, 'email' => $this->email]),
+        ], $this->tenant_id, now: true);
+    }
 
-        return mb_strtoupper(mb_substr($parts[0] ?? '', 0, 1).mb_substr($parts[1] ?? '', 0, 1));
+    /**
+     * Who may generate a password for whom (spec 4.5):
+     * App Admin → anyone; Tenant Admin → users of own tenant; Support → own-tenant users except Tenant Admins.
+     */
+    public function canGeneratePasswordFor(User|Customer $target): bool
+    {
+        if ($this->isAppAdmin()) {
+            return true;
+        }
+        if ($target instanceof Customer || $target->isAppUser() || $target->tenant_id !== $this->tenant_id || $this->isAppUser()) {
+            return false;
+        }
+        if ($this->isTenantAdmin()) {
+            return true;
+        }
+        if ($this->baseRole() === 'support') {
+            return $target->baseRole() !== 'tenant_admin';
+        }
+
+        return false;
     }
 }

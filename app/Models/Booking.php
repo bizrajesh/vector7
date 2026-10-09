@@ -2,16 +2,29 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Booking extends TenantModel
+class Booking extends Model
 {
-    protected $fillable = ['amount'];
+    use Auditable, BelongsToTenant;
+
+    public const STATUSES = ['active' => 'Active', 'converted' => 'Converted to sale', 'expired' => 'Expired', 'cancelled' => 'Cancelled'];
+
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['booked_at' => 'datetime', 'expires_at' => 'datetime'];
+        return [
+            'booked_on' => 'date',
+            'valid_till' => 'date',
+            'disclaimer_accepted_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
+            'released_at' => 'datetime',
+        ];
     }
 
     public function plot(): BelongsTo
@@ -19,28 +32,30 @@ class Booking extends TenantModel
         return $this->belongsTo(Plot::class);
     }
 
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class)->withTrashed();
+        return $this->belongsTo(Customer::class);
     }
 
-    public function payments(): HasMany
+    public function promoCode(): BelongsTo
     {
-        return $this->hasMany(Payment::class);
+        return $this->belongsTo(PromoCode::class);
     }
 
-    public function isPending(): bool
+    public function sale(): HasOne
     {
-        return $this->status === 'pending';
+        return $this->hasOne(Sale::class);
     }
 
-    public function hoursLeft(): int
+    public function firstInstalmentAmount(): float
     {
-        return max(0, (int) now()->diffInHours($this->expires_at, false));
-    }
+        $pct = (float) (InstalmentPlan::withoutGlobalScopes()->where('tenant_id', $this->tenant_id)->orderBy('seq')->value('percent') ?? 30);
 
-    public function daysLeft(): int
-    {
-        return max(0, (int) now()->startOfDay()->diffInDays($this->expires_at->copy()->startOfDay(), false));
+        return round((float) $this->net_price * $pct / 100, 2);
     }
 }
