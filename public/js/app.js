@@ -510,6 +510,23 @@
     });
   }
 
+  /* ---------- Option groups filtered by another select: <select data-depends="project_id"> + <option data-group="12"> ---------- */
+  function initDepends() {
+    $$('select[data-depends]').forEach(function (sel) {
+      var form = sel.form || document;
+      var parent = form.querySelector('[name="' + sel.getAttribute('data-depends') + '"]');
+      if (!parent) return;
+      var run = function () {
+        $$('option[data-group]', sel).forEach(function (o) {
+          var show = !parent.value || o.getAttribute('data-group') === parent.value;
+          o.hidden = !show; o.disabled = !show;
+          if (!show && o.selected) sel.value = '';
+        });
+      };
+      parent.addEventListener('change', run); run();
+    });
+  }
+
   /* ---------- Auto-submit selects ---------- */
   function initAutoSubmit() {
     $$('[data-autosubmit]').forEach(function (el) { el.addEventListener('change', function () { el.form && el.form.submit(); }); });
@@ -536,6 +553,6 @@
   document.addEventListener('DOMContentLoaded', function () {
     initSidebar(); initPublicNav(); initDropdowns(); initPasswords(); initWidths(); initConfirm(); initCopy(); initBulk();
     initRepeaters(); initEstimate(); initCalc(); initTooltips(); initPlotFilters(); initCarousels(); initReveal(); initCharts();
-    initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid();
+    initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid(); initDepends();
   });
 })();
