@@ -1,7 +1,7 @@
 <x-layouts.workspace title="Posts & promo codes">
     <x-page-header title="Social posts & promo codes" subtitle="Write a post for a launched project with Claude and attach a promo code. Buyers enter the code when booking." />
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             @can('promos.create')
                 <form method="POST" action="{{ route('ws.promos.generate') }}" class="card card-pad grid gap-3 sm:grid-cols-2">
                     @csrf

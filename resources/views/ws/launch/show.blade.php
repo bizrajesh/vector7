@@ -93,7 +93,7 @@
             </div>
         </div>
 
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             @if ($canImport)
                 <div class="card card-pad">
                     <h2 class="section-title">Load plots</h2>

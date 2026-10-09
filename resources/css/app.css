@@ -22,6 +22,8 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
+  /* Grid and flex-row children may shrink below their content width, so wide tables scroll inside .table-wrap instead of widening the page. */
+  .grid > *, main > * { min-width: 0; }
   body { @apply bg-page text-navy font-sans antialiased; }
   h1, h2, h3, h4 { @apply font-bold tracking-tight text-navy; }
   a { @apply text-teal-700; }

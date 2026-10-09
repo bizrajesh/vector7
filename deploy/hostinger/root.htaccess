@@ -1,0 +1,19 @@
+# Option B for Hostinger (when the domain cannot point to the /public folder):
+# copy this file to public_html/.htaccess after uploading the whole project into public_html.
+# Every request is sent into /public, and private folders (.env, storage, vendor…) are never served.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    RewriteRule ^(\.env|\.git|app|bootstrap|config|database|deploy|docs|resources|routes|storage|tests|vendor|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|tailwind\.config\.js)(/|$) - [F,L]
+
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

@@ -19,7 +19,7 @@
     <form method="POST" action="{{ route('ws.estimate.save', $project) }}" data-estimate data-sqft="{{ $project->totalSqft() }}" data-actual-sellable="{{ $actualSellable }}" class="grid gap-6 xl:grid-cols-3">
         @csrf
         <input type="hidden" name="tier" value="{{ $tier }}">
-        <fieldset class="space-y-6 xl:col-span-2" @disabled($locked)>
+        <fieldset class="min-w-0 space-y-6 xl:col-span-2" @disabled($locked)>
             <div class="card">
                 <h2 class="section-title p-4">Facilities ({{ $tier }})</h2>
                 <div class="table-wrap"><table class="tbl">

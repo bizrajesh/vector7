@@ -21,4 +21,5 @@ class ServiceRequest extends Model
     public function service(): BelongsTo { return $this->belongsTo(Service::class); }
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
     public function ticket(): BelongsTo { return $this->belongsTo(Ticket::class); }
+    public function user(): BelongsTo { return $this->belongsTo(User::class); }
 }
