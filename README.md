@@ -330,6 +330,7 @@ The suite covers every business rule in the spec: double booking, booking expiry
 | Changed `.env` but nothing happens | `php artisan optimize:clear` then `php artisan optimize` |
 | `composer install` version errors | Run `composer update`. |
 | Locked out | Another admin can unlock you from IAM, or wait 15 minutes. |
+| App Admin can't sign in / forgot password | `php artisan v7:app-admin` resets the App Admin to `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD` from `.env` (and unlocks it). Or set your own: `php artisan v7:app-admin you@example.com --password="New@Pass2026"` |
 
 ---
 
