@@ -3,32 +3,25 @@
     <section class="relative overflow-hidden bg-white">
         <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:py-20">
             <div class="lg:col-span-6">
-                <h1 class="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight text-navy sm:text-6xl">Approved plots.<br>Live availability.<br>Book in minutes.</h1>
-                <p class="mt-5 max-w-xl text-lg text-muted">Every layout here is listed by its promoter with patta numbers, approvals and today's price — so you see exactly which plots are still free before you visit.</p>
-                <form action="{{ route('market.projects') }}" method="GET" class="mt-8 rounded-2xl bg-page p-3 ring-1 ring-navy-50 sm:p-4" role="search" aria-label="Search plots">
-                    <div class="grid gap-3 sm:grid-cols-3">
-                        <div>
-                            <label for="h_loc" class="mb-1 block text-xs font-semibold text-muted">Location</label>
-                            <select id="h_loc" name="location" class="input"><option value="">Anywhere</option>@foreach ($locations as $l)<option>{{ $l }}</option>@endforeach</select>
-                        </div>
-                        <div>
-                            <label for="h_budget" class="mb-1 block text-xs font-semibold text-muted">Budget up to</label>
-                            <select id="h_budget" name="budget" class="input"><option value="">Any budget</option>@foreach ([500000 => '₹5 lakh', 1000000 => '₹10 lakh', 1500000 => '₹15 lakh', 2500000 => '₹25 lakh', 5000000 => '₹50 lakh', 10000000 => '₹1 crore'] as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
-                        </div>
-                        <div>
-                            <label for="h_size" class="mb-1 block text-xs font-semibold text-muted">Plot size</label>
-                            <select id="h_size" name="size" class="input"><option value="">Any size</option>@foreach ([600, 900, 1200, 1500, 2400, 3600] as $s)<option value="{{ $s }}">About {{ number_format($s) }} sq ft</option>@endforeach</select>
-                        </div>
+                <h1 class="text-[2.4rem] font-extrabold leading-[1.05] tracking-tight text-navy sm:text-6xl">Find your place<br>in Tamil Nadu.</h1>
+                <p class="mt-5 max-w-xl text-lg text-muted">Approved plots, flats, villas, houses, farm land and shops — listed by verified promoters and owners, with real photos and today's price.</p>
+                <form action="{{ route('market.search') }}" method="GET" class="mt-8 rounded-2xl bg-page p-3 ring-1 ring-navy-50 sm:p-4" role="search" aria-label="Search properties">
+                    <label for="h_q" class="mb-1 block text-sm font-semibold">Tell us what you are looking for — in English or தமிழ்</label>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <input id="h_q" name="q" class="input flex-1 py-3 text-base" maxlength="500" required placeholder="2 BHK flat in Thanjavur under 50 lakh near a school">
+                        <button class="btn-primary btn-pill px-7 py-3"><x-icon name="sparkles" class="h-4 w-4" /> Search</button>
                     </div>
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                        <a href="{{ route('market.requirement') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold"><x-icon name="sparkles" class="h-4 w-4" /> Or describe the plot you want in your own words</a>
-                        <button class="btn-primary btn-pill px-8 py-3"><x-icon name="search" class="h-4 w-4" /> Search plots</button>
-                    </div>
+                    <p class="mt-3 flex flex-wrap gap-2 text-sm">
+                        <span class="text-muted">Try:</span>
+                        @foreach (['DTCP plot near Vallam under 15 lakh', 'Villa with car parking in Trichy', '2 acres farm land with borewell', 'Shop for rent in Thanjavur'] as $ex)
+                            <a href="{{ route('market.search', ['q' => $ex]) }}" class="chip chip-sm no-underline">{{ $ex }}</a>
+                        @endforeach
+                    </p>
                 </form>
                 <dl class="mt-8 flex flex-wrap gap-x-10 gap-y-3 text-sm">
+                    <div><dt class="text-muted">Properties listed</dt><dd class="text-2xl font-extrabold">{{ number_format($stats['listings']) }}</dd></div>
                     <div><dt class="text-muted">Launched layouts</dt><dd class="text-2xl font-extrabold">{{ $stats['projects'] }}</dd></div>
                     <div><dt class="text-muted">Plots available today</dt><dd class="text-2xl font-extrabold">{{ number_format($stats['available']) }}</dd></div>
-                    <div><dt class="text-muted">Locations</dt><dd class="text-2xl font-extrabold">{{ $stats['locations'] }}</dd></div>
                 </dl>
             </div>
 
@@ -47,7 +40,9 @@
                                 @php($avail = $p->plots->where('status', 'available'))
                                 <div class="carousel-slide p-4 sm:p-5" role="group" aria-roledescription="slide" aria-label="{{ $i + 1 }} of {{ $featured->count() }}">
                                     <a href="{{ $p->publicUrl() }}" class="block overflow-hidden rounded-2xl bg-page">
-                                        @if ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
+                                        @if ($p->images->isNotEmpty())
+                                            <img src="{{ $p->images->first()->url() }}" alt="{{ $p->name }}" class="aspect-[4/3] w-full object-cover" width="800" height="600" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif>
+                                        @elseif ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
                                             <img src="{{ $p->layoutUrl() }}" alt="Layout plan of {{ $p->name }}" class="aspect-[4/3] w-full object-cover" width="{{ $p->layout_width ?: 800 }}" height="{{ $p->layout_height ?: 600 }}" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif>
                                         @else
                                             <div class="grid aspect-[4/3] grid-cols-8 gap-1 p-4">@foreach ($p->plots->take(48) as $pl)<span class="rounded-sm {{ $pl->status === 'available' ? 'bg-teal-600' : ($pl->status === 'blocked' ? 'bg-red-300' : 'bg-navy-100') }}"></span>@endforeach</div>
@@ -81,12 +76,49 @@
                     <div class="rounded-3xl bg-page p-10 text-center lg:mt-24">
                         <p class="text-xl font-extrabold">New layouts are on their way</p>
                         <p class="mt-2 text-muted">Save what you are looking for and we will email you when a matching plot is launched.</p>
-                        <a href="{{ route('market.requirement') }}" class="btn-primary btn-pill mt-5">Describe your plot</a>
+                        <a href="{{ route('market.search') }}" class="btn-primary btn-pill mt-5">Search properties</a>
                     </div>
                 @endif
             </div>
         </div>
     </section>
+
+    {{-- Categories --}}
+    <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="cat-h">
+        <h2 id="cat-h" class="text-3xl font-extrabold tracking-tight">Browse by property type</h2>
+        <ul class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            @foreach ($categories as $c)
+                <li><a href="{{ $c['url'] }}" class="card card-pad block h-full text-navy no-underline transition hover:shadow-lift">
+                    <span class="text-teal-700"><x-icon :name="$c['icon']" class="h-7 w-7" /></span>
+                    <span class="mt-3 block font-bold">{{ $c['label'] }}</span>
+                    <span class="text-sm text-muted">{{ $c['count'] }} {{ $c['count'] === 1 ? 'listing' : 'listings' }}</span>
+                </a></li>
+            @endforeach
+        </ul>
+    </section>
+
+    @if ($listings->isNotEmpty())
+        <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="new-h">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <h2 id="new-h" class="text-3xl font-extrabold tracking-tight">Featured & newly listed</h2>
+                <a href="{{ route('market.category', ['purpose' => 'buy']) }}" class="font-semibold">See all</a>
+            </div>
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach ($listings as $item)@include('partials.property-card', ['item' => $item, 'shortlisted' => []])@endforeach
+            </div>
+        </section>
+    @endif
+
+    @if ($districts->isNotEmpty())
+        <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="dist-h">
+            <h2 id="dist-h" class="text-3xl font-extrabold tracking-tight">Browse by district</h2>
+            <ul class="mt-6 flex flex-wrap gap-2">
+                @foreach ($districts as $d => $n)
+                    <li><a href="{{ route('market.search', ['place' => $d]) }}" class="chip no-underline hover:bg-white">{{ $d }} <span class="text-muted">{{ $n }}</span></a></li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     {{-- How it works: a real sequence --}}
     <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6">
@@ -122,6 +154,21 @@
         </div>
     </section>
 
+    @if ($testimonials->isNotEmpty())
+        <section class="mx-auto max-w-7xl px-4 pt-16 sm:px-6" aria-labelledby="tst-h">
+            <h2 id="tst-h" class="text-3xl font-extrabold tracking-tight">What buyers say</h2>
+            <div class="mt-6 grid gap-4 md:grid-cols-3">
+                @foreach ($testimonials as $t)
+                    <figure class="card card-pad">
+                        @if ($t->rating)<p class="text-gold" aria-label="{{ $t->rating }} out of 5">{{ str_repeat('★', $t->rating) }}<span class="text-navy-100">{{ str_repeat('★', 5 - $t->rating) }}</span></p>@endif
+                        <blockquote class="mt-2 leading-relaxed">“{{ $t->body }}”</blockquote>
+                        <figcaption class="mt-3 text-sm font-semibold">{{ \Illuminate\Support\Str::before($t->name, ' ') ?: $t->name }}@if ($t->place)<span class="font-normal text-muted">, {{ $t->place }}</span>@endif</figcaption>
+                    </figure>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     @if ($services->isNotEmpty())
         <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6">
             <div class="flex flex-wrap items-end justify-between gap-4">
@@ -143,8 +190,8 @@
     <section class="mx-auto max-w-7xl px-4 sm:px-6">
         <div class="flex flex-col items-start justify-between gap-6 rounded-3xl bg-navy p-8 text-white sm:p-12 lg:flex-row lg:items-center">
             <div class="max-w-2xl">
-                <h2 class="text-3xl font-extrabold tracking-tight text-white">Run your layouts on vector7</h2>
-                <p class="mt-3 text-navy-100">Approvals, estimates, plot launch, bookings, instalments and registration — one workspace for your whole team. Start on a free trial.</p>
+                <h2 class="text-3xl font-extrabold tracking-tight text-white">Promoter or owner? List on vector7</h2>
+                <p class="mt-3 text-navy-100">Post plots, flats, villas, houses, farm land or shops with photos and a map pin. Every call, WhatsApp and enquiry lands in your Leads. Start on a free trial.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a href="{{ route('signup') }}" class="btn btn-pill bg-gold px-7 py-3 text-navy hover:bg-amber-300 hover:text-navy">Create a workspace</a>

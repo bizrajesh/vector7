@@ -33,6 +33,13 @@ use App\Services\SeoService;
 use App\Services\TenantProvisioner;
 use App\Services\TicketService;
 use App\Support\Tenancy;
+use App\Services\LeadService;
+use App\Services\PropertyDetails;
+use App\Services\PropertyMedia;
+use App\Models\FeatureMaster;
+use App\Models\Listing;
+use App\Models\Testimonial;
+use Illuminate\Http\UploadedFile;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Crypt;
@@ -74,6 +81,7 @@ class DemoSeeder extends Seeder
                 $this->salesActivity($launched, $realNow);
                 Carbon::setTestNow($realNow);
                 $this->crm($launched);
+                $this->marketplace($launched);
             });
         } finally {
             Carbon::setTestNow();
@@ -411,11 +419,21 @@ class DemoSeeder extends Seeder
     private function crm(Project $p): void
     {
         $avail = Plot::where('project_id', $p->id)->where('status', 'available')->take(3)->get();
-        foreach ([['Hari Prasad', 'hari@example.com', '9876501234', 'Is a bank loan available for plot 6? I would like to visit on Sunday.', 'new', 0],
-            ['Shalini M', 'shalini@example.com', '9876502345', 'Please share the DTCP approval copy and the final price for a corner plot.', 'contacted', 1],
-            ['Venkat Raman', 'venkat@example.com', '9876503456', 'Looking for an east-facing plot under ₹18 lakh.', 'new', 2]] as $i => [$n, $e, $m, $msg, $st, $pi]) {
-            Enquiry::create(['tenant_id' => $this->tenant->id, 'project_id' => $p->id, 'plot_id' => $avail[$pi]->id ?? null, 'name' => $n, 'email' => $e, 'mobile' => $m,
-                'message' => $msg, 'status' => $st, 'assigned_to' => $st === 'contacted' ? $this->users['sales']->id : null, 'follow_up_on' => today()->addDays($i - 1)]);
+        // Leads (spec 17.6) — from the marketplace contact block, enquiries and walk-ins, at different stages.
+        foreach ([['Hari Prasad', 'hari@example.com', '9876501234', 'Is a bank loan available for plot 6? I would like to visit on Sunday.', 'enquiry', 'new', 0, null],
+            ['Shalini M', 'shalini@example.com', '9876502345', 'Please share the DTCP approval copy and the final price for a corner plot.', 'whatsapp_click', 'contacted', 1, 'sales'],
+            ['Venkat Raman', 'venkat@example.com', '9876503456', 'Looking for an east-facing plot under ₹18 lakh.', 'call_click', 'visit_scheduled', 2, 'sales'],
+            ['Priya Dharshini', null, '9876505678', 'Walked into the office asking about plots near Vallam.', 'walk_in', 'negotiation', 0, 'manager']] as $i => [$n, $e, $m, $msg, $src, $stage, $pi, $who]) {
+            $lead = LeadService::capture($this->tenant->id, $src, ['name' => $n, 'email' => $e, 'mobile' => $m, 'message' => $msg, 'consent' => true],
+                array_filter(['project_id' => $p->id, 'plot_id' => $avail[$pi]->id ?? null]), $msg);
+            if ($who) {
+                LeadService::assign($lead, $this->users[$who]);
+            }
+            if ($stage !== 'new') {
+                LeadService::moveTo($lead->fresh(), \App\Models\LeadStage::where('key', $stage)->first());
+            }
+            LeadService::scheduleFollowup($lead->fresh(), now()->addDays($i - 1)->setTime(11, 0), $stage === 'visit_scheduled' ? 'site_visit' : 'follow_up', 'Call back with price details',
+                $who ? $this->users[$who]->id : null);
         }
         // App-level records are created outside the tenant context (the tenant trait would stamp the tenant on them).
         app(Tenancy::class)->run(null, fn () => Enquiry::create(['tenant_id' => null, 'assigned_team' => 'app', 'name' => 'Sathish K', 'email' => 'sathish@example.com', 'mobile' => '9876504567',
@@ -433,5 +451,160 @@ class DemoSeeder extends Seeder
             SocialPost::create(\App\Services\SocialService::write($p->load('plots'), $platform, PromoCode::where('code', 'DIWALI26')->first(), $this->tenant)
                 + ['tenant_id' => $this->tenant->id, 'project_id' => $p->id, 'platform' => $platform, 'status' => 'draft', 'created_by' => $this->users['manager']->id]);
         }
+    }
+
+    /** Feature Update 01 demo data: listings of every type, photos, features, contact block, a direct-launch layout, testimonials. */
+    private function marketplace(Project $launched): void
+    {
+        $contact = ['contact_name' => 'Suresh Babu', 'contact_mobile' => '9840012345', 'contact_whatsapp' => '9840012345', 'contact_email' => 'sales@demo.vector7.in',
+            'allow_call' => true, 'allow_whatsapp' => true, 'allow_email' => true];
+        // Photos, map pin, features and contact for the launched layout.
+        $launched->update(['lat' => 10.7712, 'lng' => 79.0995, 'village' => 'Vallam', 'approval_authority' => 'DTCP', 'approval_number' => 'DTCP/LP/112/2026']);
+        PropertyMedia::addImages($launched, $this->photos('layout', 4));
+        $this->features($launched, 'layout', ['BT road', 'Street lights', 'Compound wall', 'Park']);
+        PropertyDetails::saveContact($launched, $contact);
+
+        $listings = [
+            ['plot', 'sale', 'East-facing 5 cent plot near Vallam bus stand', 'Vallam', 'Thanjavur', 10.7745, 79.1052, 1450000, null,
+                ['area' => 5, 'area_unit' => 'cents', 'facing' => 'East', 'road_width_ft' => 30, 'corner' => true], '845/71', 'Clear patta plot 300 m from Vallam bus stand. 30 ft road on the east, corner plot, ready for registration.'],
+            ['flat', 'sale', '2 BHK flat in Medical College Road', 'Thanjavur', 'Thanjavur', 10.7590, 79.1047, 4850000, 4500000,
+                ['bhk' => 2, 'built_up_sqft' => 1080, 'carpet_sqft' => 860, 'floor_no' => 2, 'total_floors' => 4, 'facing' => 'East', 'furnishing' => 'semi', 'car_parking' => 1, 'age_years' => 3], null,
+                'Bright 2 BHK on the 2nd floor with lift and covered car parking. 5 minutes to the Medical College and a CBSE school.'],
+            ['flat', 'rent', '3 BHK flat for rent near New Bus Stand', 'Thanjavur', 'Thanjavur', 10.7703, 79.1312, 18000, null,
+                ['bhk' => 3, 'built_up_sqft' => 1400, 'facing' => 'North', 'furnishing' => 'unfurnished', 'car_parking' => 1, 'maintenance_month' => 1500], null,
+                'Spacious 3 BHK for families. Two bathrooms, corporation water and borewell, power backup for lights.'],
+            ['villa', 'sale', '3 BHK gated villa in Trichy Road', 'Thanjavur', 'Thanjavur', 10.8045, 79.1601, 8900000, null,
+                ['bhk' => 3, 'built_up_sqft' => 1850, 'plot_area_sqft' => 2400, 'facing' => 'North', 'furnishing' => 'semi', 'car_parking' => 2], null,
+                'Independent villa in a 24-villa gated community with clubhouse, CCTV and 24 hour security.'],
+            ['house', 'sale', 'Independent house with garden in Kumbakonam', 'Kumbakonam', 'Thanjavur', 10.9617, 79.3881, 6200000, null,
+                ['bhk' => 2, 'built_up_sqft' => 1250, 'plot_area_sqft' => 2400, 'facing' => 'East', 'floors' => 1, 'car_parking' => 1, 'age_years' => 8], null,
+                'Well-kept independent house on a 1 ground plot with a small garden, borewell and EB three-phase connection. Near temple and school.'],
+            ['farm_land', 'sale', '2 acres farm land with borewell at Budalur', 'Budalur', 'Thanjavur', 10.7863, 78.9879, 3200000, null,
+                ['extent' => 2, 'extent_unit' => 'acres', 'water_source' => 'borewell', 'soil_type' => 'Red soil', 'current_crop' => 'Coconut, mango', 'road_access' => true, 'eb_connection' => true], '1204',
+                'Fertile red-soil farm land with a working 7.5 HP borewell and EB connection. Coconut and mango trees. 200 m from the tar road.'],
+            ['commercial', 'rent', 'Ground-floor shop on Gandhiji Road', 'Thanjavur', 'Thanjavur', 10.7837, 79.1353, 35000, null,
+                ['sub_type' => 'shop', 'built_up_sqft' => 450, 'floor_no' => 0, 'frontage_ft' => 18, 'washroom' => true, 'parking' => false], null,
+                'Main-road shop with 18 ft frontage, rolling shutter and high footfall. Suitable for a showroom, pharmacy or bank ATM.'],
+            ['flat', 'sale', '2 BHK flat near Chathiram bus stand', 'Tiruchirappalli', 'Tiruchirappalli', 10.8262, 78.6918, 5200000, null,
+                ['bhk' => 2, 'built_up_sqft' => 1150, 'facing' => 'North', 'furnishing' => 'unfurnished', 'car_parking' => 1], null,
+                'New 2 BHK in a 12-flat building with lift. Walk to Chathiram bus stand and the Rockfort.'],
+        ];
+        foreach ($listings as $i => [$type, $purpose, $title, $city, $district, $lat, $lng, $price, $offer, $details, $patta, $desc]) {
+            $t = \App\Listings\ListingTypes::get($type);
+            $details = $t->clean($details);
+            $code = IdGenerator::next($this->tenant->id, 'listing');
+            $l = Listing::create([
+                'tenant_id' => $this->tenant->id, 'listing_code' => $code, 'type' => $type, 'purpose' => $purpose, 'title' => $title,
+                'slug' => \Illuminate\Support\Str::slug($title).'-'.strtolower($code), 'description' => $desc,
+                'city' => $city, 'district' => $district, 'state' => 'Tamil Nadu', 'lat' => $lat, 'lng' => $lng, 'patta_number' => $patta,
+                'price' => $price, 'offer_price' => $offer, 'offer_text' => $offer ? 'Festival offer' : null, 'offer_valid_till' => $offer ? today()->addDays(15) : null,
+                'type_details' => $details, 'status' => 'published', 'published_at' => now()->subDays(10 - $i), 'featured' => $i < 3, 'views' => random_int(20, 400),
+                'created_by' => $this->users['manager']->id,
+            ] + $t->searchColumns($details));
+            PropertyMedia::addImages($l, $this->photos($type, 3 + ($i % 2)));
+            $this->features($l, $type, []);
+            PropertyDetails::saveContact($l, $contact);
+            \App\Services\SeoService::refreshListing($l->fresh());
+            if ($i < 3) {
+                LeadService::capture($this->tenant->id, ['show_number', 'whatsapp_click', 'enquiry'][$i], ['name' => ['Anand R', 'Divya S', 'Mohammed Ali'][$i], 'mobile' => '98765'.(10000 + $i * 1111), 'consent' => true],
+                    ['listing_id' => $l->id], 'Asked about '.$title.'.');
+            }
+        }
+        // One sold listing (returns 410 on its public page) and one draft.
+        $sold = Listing::latest('id')->first();
+        $sold->update(['status' => 'sold']);
+
+        // A direct (quick) launch of an already-approved layout.
+        $direct = Project::create([
+            'tenant_id' => $this->tenant->id, 'project_code' => IdGenerator::next($this->tenant->id, 'project'), 'name' => 'Kallanai Riverside Plots',
+            'location' => 'Thogur', 'village' => 'Thogur', 'district' => 'Thanjavur', 'state' => 'Tamil Nadu', 'pin' => '613102', 'lat' => 10.8301, 'lng' => 78.8211,
+            'approval_type' => 'Village', 'approval_authority' => 'DTCP', 'approval_number' => 'DTCP/LP/77/2025', 'survey_numbers' => '88/2', 'patta_numbers' => '402',
+            'size_acres' => 1.4, 'promo_text' => "Approved plots 2 km from Kallanai (Grand Anicut). 23 ft roads, EB and street lights in place. Bank loans available.",
+            'status' => 'ready_to_launch', 'launch_mode' => 'direct', 'progress_pct' => 100, 'contact' => '9840012345', 'created_by' => $this->users['manager']->id,
+        ]);
+        $rows = [];
+        foreach (range(1, 12) as $n) {
+            $rows[] = ['plot_no' => (string) $n, 'patta_number' => '402/'.$n, 'size_sqft' => (string) (1000 + ($n % 4) * 150), 'facing' => $n % 2 ? 'East' : 'West',
+                'rate_per_sqft' => '900', 'status' => 'Available'];
+        }
+        [$errors, , $clean] = PlotImporter::validate($direct, $rows);
+        if ($errors) {
+            throw new \RuntimeException('Demo direct-launch import failed: '.json_encode($errors));
+        }
+        PlotImporter::import($direct, $clean, $this->users['manager']->id);
+        PropertyMedia::addImages($direct, $this->photos('layout', 3));
+        $this->features($direct, 'layout', ['Near river']);
+        PropertyDetails::saveContact($direct, $contact);
+        $direct->update(['launched_at' => now()]);
+        ProjectService::setStatus($direct->fresh(), 'launched', 'Published with Quick Launch (direct launch).');
+
+        app(Tenancy::class)->run(null, function () {
+            foreach ([['Ramesh K', 'Thanjavur', 'Found a DTCP plot within my budget in two days. The promoter called me back within an hour and the site visit was easy to arrange.', 5],
+                ['Kalaivani P', 'Kumbakonam', 'Seeing the price, offer and photos before visiting saved us a lot of time. Booking online was simple.', 5],
+                ['Senthil M', 'Trichy', 'Good listings with real photos. The map view helped me compare locations.', 4]] as [$n, $pl, $b, $r]) {
+                Testimonial::create(['tenant_id' => null, 'name' => $n, 'place' => $pl, 'body' => $b, 'rating' => $r, 'status' => 'approved']);
+            }
+        });
+    }
+
+    /** Pick a few App features for the type, plus custom highlights. */
+    private function features(Listing|Project $owner, string $type, array $highlights): void
+    {
+        $ids = FeatureMaster::forType($type, $this->tenant->id)->inRandomOrder()->take(5)->pluck('id')->all();
+        PropertyDetails::syncFeatures($owner, $ids, $highlights, $type);
+    }
+
+    /** Placeholder "photos" drawn with GD (sky, ground, a building or plot outline) so the demo has real images. */
+    private function photos(string $kind, int $n): array
+    {
+        $out = [];
+        for ($i = 0; $i < $n; $i++) {
+            $w = 1200;
+            $h = 800;
+            $im = imagecreatetruecolor($w, $h);
+            $sky = [[186, 222, 245], [210, 230, 250], [250, 214, 170], [200, 225, 240]][$i % 4];
+            for ($y = 0; $y < $h * 0.55; $y++) {
+                $k = $y / ($h * 0.55);
+                imageline($im, 0, $y, $w, $y, imagecolorallocate($im, (int) ($sky[0] * (1 - $k * 0.2)), (int) ($sky[1] * (1 - $k * 0.1)), $sky[2]));
+            }
+            $ground = in_array($kind, ['farm_land', 'layout', 'plot'], true) ? [96, 140, 70] : [150, 150, 140];
+            imagefilledrectangle($im, 0, (int) ($h * 0.55), $w, $h, imagecolorallocate($im, ...$ground));
+            $navy = imagecolorallocate($im, 11, 27, 51);
+            $teal = imagecolorallocate($im, 13, 148, 136);
+            $white = imagecolorallocate($im, 255, 255, 255);
+            if (in_array($kind, ['flat', 'commercial'], true)) {
+                $x0 = 300 + $i * 60;
+                imagefilledrectangle($im, $x0, 160, $x0 + 520, 600, imagecolorallocate($im, 236, 232, 222));
+                for ($fy = 0; $fy < 5; $fy++) {
+                    for ($fx = 0; $fx < 6; $fx++) {
+                        imagefilledrectangle($im, $x0 + 30 + $fx * 80, 190 + $fy * 80, $x0 + 80 + $fx * 80, 240 + $fy * 80, $fx % 3 ? $navy : $teal);
+                    }
+                }
+            } elseif (in_array($kind, ['villa', 'house'], true)) {
+                $x0 = 360 + $i * 40;
+                imagefilledrectangle($im, $x0, 330, $x0 + 460, 600, imagecolorallocate($im, 245, 240, 228));
+                imagefilledpolygon($im, [$x0 - 40, 340, $x0 + 230, 180, $x0 + 500, 340], imagecolorallocate($im, 170, 70, 50));
+                imagefilledrectangle($im, $x0 + 190, 450, $x0 + 270, 600, $navy);
+                imagefilledrectangle($im, $x0 + 50, 400, $x0 + 140, 470, $teal);
+                imagefilledrectangle($im, $x0 + 320, 400, $x0 + 410, 470, $teal);
+            } else {
+                imagesetthickness($im, 4);
+                for ($r = 0; $r < 3; $r++) {
+                    imagepolygon($im, [150 + $r * 40, 500 + $r * 90, 1050 - $r * 40, 500 + $r * 90, 1100 - $r * 30, 560 + $r * 90, 100 + $r * 30, 560 + $r * 90], $white);
+                }
+                for ($t = 0; $t < 6; $t++) {
+                    $tx = 80 + $t * 200 + $i * 20;
+                    imagefilledrectangle($im, $tx, 380, $tx + 12, 470, imagecolorallocate($im, 110, 80, 50));
+                    imagefilledellipse($im, $tx + 6, 370, 110, 90, imagecolorallocate($im, 40, 110, 50));
+                }
+            }
+            imagestring($im, 5, 24, $h - 40, 'vector7 demo photo', $white);
+            $path = tempnam(sys_get_temp_dir(), 'v7demo').'.jpg';
+            imagejpeg($im, $path, 82);
+            imagedestroy($im);
+            $out[] = new UploadedFile($path, $kind.'-'.($i + 1).'.jpg', 'image/jpeg', null, true);
+        }
+
+        return $out;
     }
 }

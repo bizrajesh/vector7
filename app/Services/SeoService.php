@@ -199,6 +199,24 @@ class SeoService
                 }
             });
 
+            // Listings (live only — sold, unpublished and hidden listings drop out) and category pages (spec 17.7).
+            app(Tenancy::class)->withoutScope(function () use ($add) {
+                $cats = [];
+                foreach (\App\Models\Listing::live()->get() as $l) {
+                    $add($l->publicUrl(), $l->updated_at, 'weekly', '0.7');
+                    $cats[$l->type.'|'.$l->purpose.'|'] = true;
+                    $cats[$l->type.'|'.$l->purpose.'|'.$l->city] = true;
+                }
+                foreach (Project::launched()->whereHas('plots', fn ($q) => $q->where('status', 'available'))->get(['location']) as $p) {
+                    $cats['layout|sale|'] = true;
+                    $cats['layout|sale|'.$p->location] = true;
+                }
+                foreach (array_keys($cats) as $c) {
+                    [$type, $purpose, $city] = explode('|', $c);
+                    $add(\App\Services\PropertySearch::categoryUrl($type, $purpose, $city ?: null), null, 'daily', $city ? '0.6' : '0.8');
+                }
+            });
+
             return '<?xml version="1.0" encoding="UTF-8"?>'."\n".'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.implode('', $urls).'</urlset>';
         });
     }
@@ -243,7 +261,7 @@ class SeoService
             '@type' => 'WebSite',
             'name' => 'vector7',
             'url' => url('/'),
-            'potentialAction' => ['@type' => 'SearchAction', 'target' => route('market.projects').'?q={search_term_string}', 'query-input' => 'required name=search_term_string'],
+            'potentialAction' => ['@type' => 'SearchAction', 'target' => route('market.search').'?q={search_term_string}', 'query-input' => 'required name=search_term_string'],
         ];
     }
 

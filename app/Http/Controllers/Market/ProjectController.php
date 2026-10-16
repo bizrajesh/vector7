@@ -53,17 +53,20 @@ class ProjectController extends Controller
         if ($location !== $project->locationSlug()) {
             return redirect($project->publicUrl(), 301);
         }
-        $project->load(['plots' => fn ($q) => $q->where('status', '!=', 'sold')->orderByRaw('CAST(plot_no AS UNSIGNED), plot_no'), 'layoutFile', 'tenantRel', 'stages', 'estimate']);
+        $project->load(['plots' => fn ($q) => $q->where('status', '!=', 'sold')->orderByRaw('CAST(plot_no AS UNSIGNED), plot_no'), 'layoutFile', 'tenantRel', 'stages', 'estimate',
+            'images', 'featureRows.master', 'contactBlock', 'brochure']);
         $project->plots->each->setRelation('project', $project);
-        $gallery = StorageFile::whereIn('id', $project->gallery ?? [])->get();
         $d = SeoService::projectDefaults($project);
 
         return view('market.project', [
             'project' => $project,
             'tenant' => $project->tenantRel,
             'plots' => $project->plots,
-            'gallery' => $gallery,
-            'seo' => SeoService::meta('project', $project->slug, $d['title'], $d['description']) + ['canonical' => $project->publicUrl(), 'image' => $project->layoutUrl(), 'type' => 'website'],
+            'images' => $project->images,
+            'contact' => \App\Http\Controllers\Market\ContactController::projectContact($project),
+            'youtubeId' => \App\Services\PropertyMedia::youtubeId($project->youtube_url),
+            'src' => request()->query('src') === 'ai' ? 'ai' : null,
+            'seo' => SeoService::meta('project', $project->slug, $d['title'], $d['description']) + ['canonical' => $project->publicUrl(), 'image' => $project->images->first()?->url() ?? $project->layoutUrl(), 'type' => 'website'],
             'jsonld' => [
                 SeoService::breadcrumbs([['Home', route('home')], ['Projects', route('market.projects')], [$project->name, $project->publicUrl()]]),
                 SeoService::projectListing($project),
@@ -93,7 +96,7 @@ class ProjectController extends Controller
         return view('market.plot', [
             'project' => $project->load('tenantRel', 'layoutFile'),
             'plot' => $plot,
-            'gallery' => StorageFile::whereIn('id', $project->gallery ?? [])->get(),
+            'images' => $project->images()->get(),
             'similar' => $project->plots()->where('status', 'available')->where('id', '!=', $plot->id)->orderByRaw('ABS(size_sqft - ?)', [$plot->size_sqft])->take(4)->get()->each->setRelation('project', $project),
             'seo' => SeoService::meta('plot', $project->slug.'/'.$plot->plot_no, $d['title'], $d['description']) + ['canonical' => $plot->publicUrl(), 'image' => $project->layoutUrl()],
             'jsonld' => [
@@ -115,6 +118,11 @@ class ProjectController extends Controller
     public function gallery(string $slug, StorageFile $file)
     {
         $project = $this->find($slug);
+        // Gallery photos now live in listing_images (spec 17.3); old links redirect to the new image URL.
+        $img = \App\Models\ListingImage::where('project_id', $project->id)->where('file_id', $file->id)->first();
+        if ($img) {
+            return redirect($img->url(), 301);
+        }
         abort_unless(in_array($file->id, $project->gallery ?? [], true), 404);
 
         return $this->image($file);

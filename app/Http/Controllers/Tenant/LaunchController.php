@@ -47,8 +47,8 @@ class LaunchController extends Controller
             'features' => \App\Models\FeatureMaster::forType('layout')->get()->groupBy('group'),
             'selectedFeatures' => $project->featureRows->whereNotNull('feature_master_id')->pluck('feature_master_id')->all(),
             'highlights' => $project->featureRows->whereNotNull('custom_text')->pluck('custom_text')->values()->all(),
-            'contact' => $project->contact ? ['contact_name' => $project->contact->name, 'contact_mobile' => $project->contact->mobile, 'contact_whatsapp' => $project->contact->whatsapp,
-                'contact_email' => $project->contact->email, 'allow_call' => $project->contact->allow_call, 'allow_whatsapp' => $project->contact->allow_whatsapp, 'allow_email' => $project->contact->allow_email]
+            'contact' => ($c = $project->contactBlock) ? ['contact_name' => $c->name, 'contact_mobile' => $c->mobile, 'contact_whatsapp' => $c->whatsapp,
+                'contact_email' => $c->email, 'allow_call' => $c->allow_call, 'allow_whatsapp' => $c->allow_whatsapp, 'allow_email' => $c->allow_email]
                 : \App\Services\PropertyDetails::contactDefaults($project->tenantRel),
         ]);
     }

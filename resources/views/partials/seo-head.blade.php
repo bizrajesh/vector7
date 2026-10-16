@@ -1,4 +1,4 @@
-{{-- $seo = ['title','description','canonical','image','type','noindex'], $jsonld = [array, ...] --}}
+{{-- $seo = ['title','description','canonical','image','type','noindex','robots'], $jsonld = [array, ...] --}}
 @php
     $seo = $seo ?? [];
     $t = \App\Services\SeoService::title($seo['title'] ?? \App\Services\AppSettings::get('seo.default_title'));
@@ -9,7 +9,7 @@
 @endphp
 <meta name="description" content="{{ $d }}">
 <link rel="canonical" href="{{ $canonical }}">
-@if ($noindex)<meta name="robots" content="noindex, nofollow">@else<meta name="robots" content="index, follow, max-image-preview:large">@endif
+@if ($noindex)<meta name="robots" content="noindex, nofollow">@elseif (($seo['robots'] ?? null) === 'noindex,follow')<meta name="robots" content="noindex, follow">@else<meta name="robots" content="index, follow, max-image-preview:large">@endif
 <meta property="og:site_name" content="vector7">
 <meta property="og:type" content="{{ $seo['type'] ?? 'website' }}">
 <meta property="og:title" content="{{ $t }}">

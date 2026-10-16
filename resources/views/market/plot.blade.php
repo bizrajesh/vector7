@@ -52,9 +52,9 @@
                 </div>
             </aside>
         </div>
-        @if ($gallery->isNotEmpty())
+        @if ($images->isNotEmpty())
             <h2 class="mt-12 text-xl font-extrabold">Gallery</h2>
-            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">@foreach ($gallery as $img)<img src="{{ route('market.gallery', [$project->slug, $img]) }}" alt="{{ $project->name }} photo {{ $loop->iteration }}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy" width="400" height="300">@endforeach</div>
+            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">@foreach ($images as $img)<img src="{{ $img->url(true) }}" alt="{{ $img->caption ?: $project->name.' photo '.$loop->iteration }}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy" width="400" height="300">@endforeach</div>
         @endif
         @if ($similar->isNotEmpty())
             <h2 class="mt-12 text-xl font-extrabold">Similar plots in {{ $project->name }}</h2>

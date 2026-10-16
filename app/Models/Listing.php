@@ -31,6 +31,18 @@ class Listing extends Model
 
     protected $guarded = ['id'];
 
+    /** Marketplace caches (sitemap, category counts, known places) follow listing changes straight away. */
+    protected static function booted(): void
+    {
+        $flush = function () {
+            foreach (['sitemap.xml', 'ps.counts', 'ps.places'] as $k) {
+                \Illuminate\Support\Facades\Cache::forget($k);
+            }
+        };
+        static::saved($flush);
+        static::deleted($flush);
+    }
+
     protected function casts(): array
     {
         return [

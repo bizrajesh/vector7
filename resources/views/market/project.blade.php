@@ -1,4 +1,5 @@
 <x-layouts.public :seo="$seo" :jsonld="$jsonld">
+    @if ($project->lat !== null && $project->lng !== null)@include('partials.leaflet')@endif
     @php($available = $plots->where('status', 'available'))
     <section class="bg-white">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -6,7 +7,8 @@
             <div class="mt-3 flex flex-wrap items-end justify-between gap-6">
                 <div>
                     <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">{{ $project->name }}</h1>
-                    <p class="mt-2 text-lg text-muted">{{ $project->location }}, {{ $project->district }}, {{ $project->state }} · {{ $project->approval_type }} approved · {{ (float) $project->size_acres }} acres</p>
+                    <p class="mt-2 text-lg text-muted">{{ collect([$project->village, $project->location, $project->district, $project->state])->filter()->unique()->implode(', ') }} · {{ $project->approval_type }} approved · {{ (float) $project->size_acres }} acres</p>
+                    @if ($project->approvalBadge())<p class="mt-2"><span class="badge-teal"><x-icon name="shield" class="inline h-3.5 w-3.5" /> {{ $project->approvalBadge() }}</span></p>@endif
                 </div>
                 <div class="text-right">
                     <p class="text-sm text-muted">Plots from</p>
@@ -18,7 +20,16 @@
     </section>
 
     <div class="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-3">
-        <div class="space-y-8 lg:col-span-2">
+        <div class="min-w-0 space-y-8 lg:col-span-2">
+            @if ($images->isNotEmpty())
+                <section aria-label="Photos">
+                    @php($cover = $images->first())
+                    <a href="{{ $cover->url() }}" target="_blank" rel="noopener" class="block overflow-hidden rounded-2xl bg-page"><img src="{{ $cover->url() }}" alt="{{ $cover->caption ?: $project->name }}" class="aspect-[16/9] w-full object-cover" width="{{ $cover->width ?: 1600 }}" height="{{ $cover->height ?: 900 }}" fetchpriority="high"></a>
+                    @if ($images->count() > 1)
+                        <ul class="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">@foreach ($images->skip(1) as $img)<li><a href="{{ $img->url() }}" target="_blank" rel="noopener"><img src="{{ $img->url(true) }}" alt="{{ $img->caption ?: $project->name.' photo '.$loop->iteration }}" class="aspect-[4/3] w-full rounded-lg object-cover" loading="lazy" width="400" height="300"></a></li>@endforeach</ul>
+                    @endif
+                </section>
+            @endif
             <section class="card card-pad" aria-labelledby="map-h">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h2 id="map-h" class="text-xl font-extrabold">Plot map</h2>
@@ -56,19 +67,18 @@
                 <section class="card card-pad"><h2 class="text-xl font-extrabold">About {{ $project->name }}</h2><div class="mt-3 max-w-prose whitespace-pre-line leading-relaxed text-navy">{{ $project->promo_text }}</div></section>
             @endif
 
-            @if ($gallery->isNotEmpty())
-                <section aria-labelledby="gal-h"><h2 id="gal-h" class="text-xl font-extrabold">Gallery</h2>
-                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        @foreach ($gallery as $img)<a href="{{ route('market.gallery', [$project->slug, $img]) }}" target="_blank" rel="noopener"><img src="{{ route('market.gallery', [$project->slug, $img]) }}" alt="{{ $project->name }} photo {{ $loop->iteration }}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy" decoding="async" width="600" height="450"></a>@endforeach
-                    </div>
+            @if ($youtubeId)
+                <section aria-labelledby="vid-h"><h2 id="vid-h" class="text-xl font-extrabold">Video</h2>
+                    <div class="mt-3 aspect-video overflow-hidden rounded-2xl bg-navy"><iframe src="https://www.youtube-nocookie.com/embed/{{ $youtubeId }}" title="Video of {{ $project->name }}" class="h-full w-full" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
                 </section>
             @endif
         </div>
 
         <aside class="space-y-6">
-            @if (! empty($project->facilities))
-                <section class="card card-pad"><h2 class="font-extrabold">Facilities</h2>
-                    <ul class="mt-3 space-y-2 text-sm">@foreach ($project->facilities as $f)<li class="flex gap-2"><span class="text-teal-700">{!! \App\Support\Icons::svg('check', 'h-4 w-4 mt-0.5') !!}</span>{{ $f }}</li>@endforeach</ul>
+            @include('partials.market-contact', ['kind' => 'project', 'ownerId' => $project->id, 'c' => $contact, 'title' => $project->name, 'src' => $src])
+            @if ($project->featureChips())
+                <section class="card card-pad"><h2 class="font-extrabold">Features & facilities</h2>
+                    <ul class="mt-3 flex flex-wrap gap-2 text-sm">@foreach ($project->featureChips() as $c)<li class="chip"><x-icon :name="$c['icon']" class="h-4 w-4" /> {{ $c['name'] }}</li>@endforeach</ul>
                 </section>
             @endif
             @if ($project->stages->isNotEmpty())
@@ -83,6 +93,10 @@
             <section class="card card-pad">
                 <h2 class="font-extrabold">Location</h2>
                 <p class="mt-2 text-sm">{{ $project->address ?: $project->location.', '.$project->district }}</p>
+                @if ($project->lat !== null && $project->lng !== null)
+                    <div class="mt-3 h-56 overflow-hidden rounded-xl ring-1 ring-navy-50" data-map-pins="project-pin" role="application" aria-label="Map showing the layout location"></div>
+                    <script type="application/json" id="project-pin" nonce="{{ $cspNonce ?? '' }}">{!! json_encode([['lat' => (float) $project->lat, 'lng' => (float) $project->lng, 'title' => $project->name, 'type' => 'Layout', 'price' => null, 'url' => null]], JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
+                @endif
                 @if ($project->map_url)<a href="{{ $project->map_url }}" class="btn-light btn-sm mt-3" target="_blank" rel="noopener nofollow"><x-icon name="location" class="h-4 w-4" /> Open in maps</a>@endif
             </section>
             <section class="card card-pad">
@@ -90,18 +104,13 @@
                     @if ($tenant->logo_path)<img src="{{ $tenant->logoUrl() }}" alt="{{ $tenant->name }}" class="h-12 w-12 rounded-xl object-contain ring-1 ring-navy-50" width="48" height="48" loading="lazy">@endif
                     <div><p class="text-xs text-muted">Promoter</p><p class="font-extrabold">{{ $tenant->name }}</p></div>
                 </div>
-                <p class="mt-2 text-sm text-muted">{{ $tenant->city }}@if ($project->contact ?: $tenant->contact) · <a href="tel:+91{{ $project->contact ?: $tenant->contact }}">{{ $project->contact ?: $tenant->contact }}</a>@endif</p>
-                <form method="POST" action="{{ route('market.enquiry') }}" class="mt-4 space-y-3">
-                    @csrf
-                    <input type="hidden" name="project_id" value="{{ $project->id }}">
-                    <div class="hidden" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
-                    <p class="font-semibold">Ask about this project</p>
-                    <x-field name="name" label="Your name" :value="auth('customer')->user()?->name" required id="e_name" />
-                    <x-field name="email" type="email" label="Email" :value="auth('customer')->user()?->email" required id="e_email" />
-                    <x-field name="mobile" type="tel" label="Mobile" :value="auth('customer')->user()?->mobile" required inputmode="numeric" maxlength="10" id="e_mobile" />
-                    <x-textarea name="message" label="Message" rows="3" required :value="'I would like to know more about '.$project->name.'.'" id="e_msg" />
-                    <button class="btn-primary w-full">Send enquiry</button>
-                </form>
+                @if ($tenant->city)<p class="mt-2 text-sm text-muted">{{ $tenant->city }}</p>@endif
+                <div class="mt-3 grid gap-2">
+                    @auth('customer')
+                        <form method="POST" action="{{ route('account.shortlist.toggle') }}">@csrf<input type="hidden" name="key" value="P:{{ $project->id }}"><button class="btn-light w-full"><x-icon name="star" class="h-4 w-4" /> Shortlist this layout</button></form>
+                    @endauth
+                    @if ($project->brochure)<a href="{{ route('market.brochure', ['project', $project->id]) }}" class="btn-ghost w-full"><x-icon name="download" class="h-4 w-4" /> Download brochure (PDF)</a>@endif
+                </div>
             </section>
         </aside>
     </div>

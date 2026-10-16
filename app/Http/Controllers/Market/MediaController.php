@@ -42,4 +42,19 @@ class MediaController extends Controller
             'Content-Disposition' => 'inline',
         ]);
     }
+
+    /** Brochure PDF of a live listing or a launched layout. */
+    public function brochure(string $kind, int $id)
+    {
+        $owner = app(Tenancy::class)->withoutScope(fn () => $kind === 'listing' ? Listing::live()->with('brochure')->findOrFail($id) : Project::launched()->with('brochure')->findOrFail($id));
+        $file = $owner->brochure ?? abort(404);
+        $name = \Illuminate\Support\Str::slug($kind === 'listing' ? $owner->title : $owner->name).'-brochure.pdf';
+
+        return response(FileStore::contents($file), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
 }

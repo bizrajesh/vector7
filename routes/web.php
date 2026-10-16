@@ -31,7 +31,14 @@ Route::get('/privacy', [Market\PageController::class, 'privacy'])->name('market.
 Route::get('/terms', [Market\PageController::class, 'terms'])->name('market.terms');
 Route::post('/enquiry', [Market\EnquiryController::class, 'store'])->middleware('throttle:enquiry')->name('market.enquiry');
 Route::match(['get', 'post'], '/find-a-plot', [Market\RequirementController::class, 'search'])->middleware('throttle:ai')->name('market.requirement');
+Route::get('/brochure/{kind}/{id}', [Market\MediaController::class, 'brochure'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->name('market.brochure');
 Route::get('/media/{image}/{size}', [Market\MediaController::class, 'image'])->whereNumber('image')->whereIn('size', ['full', 'thumb'])->name('market.image');
+// Property search, listings, contact block (spec 17.5 / 17.7 / 17.8)
+Route::get('/search', [Market\SearchController::class, 'index'])->middleware('throttle:search')->name('market.search');
+Route::get('/compare', [Market\ShortlistController::class, 'compare'])->name('market.compare');
+Route::post('/contact/{kind}/{id}/reveal', [Market\ContactController::class, 'reveal'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:reveal')->name('market.contact.reveal');
+Route::post('/contact/{kind}/{id}/email', [Market\ContactController::class, 'email'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:enquiry')->name('market.contact.email');
+Route::post('/listing/{listing}/report', [Market\ListingController::class, 'report'])->whereNumber('listing')->middleware('throttle:report')->name('market.listing.report');
 Route::get('/sitemap.xml', [Market\SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [Market\SeoController::class, 'robots'])->name('robots');
 Route::get('/tenant-logo/{tenant}', [FileController::class, 'tenantLogo'])->name('files.public-logo');
@@ -69,6 +76,12 @@ Route::middleware(['auth:customer', 'auth.session', 'customer'])->prefix('accoun
     Route::post('/tickets/{ticket}/reply', [Customer\TicketController::class, 'reply'])->name('tickets.reply');
     Route::post('/services/{service}/request', [Customer\TicketController::class, 'requestService'])->name('services.request');
     Route::get('/requirements', [Customer\AccountController::class, 'requirements'])->name('requirements');
+    Route::get('/shortlist', [Market\ShortlistController::class, 'index'])->name('shortlist');
+    Route::post('/shortlist', [Market\ShortlistController::class, 'toggle'])->name('shortlist.toggle');
+    Route::post('/saved-searches', [Market\SearchController::class, 'save'])->name('searches.save');
+    Route::patch('/saved-searches/{search}', [Market\ShortlistController::class, 'toggleAlerts'])->name('searches.alerts');
+    Route::delete('/saved-searches/{search}', [Market\ShortlistController::class, 'destroySearch'])->name('searches.destroy');
+    Route::post('/testimonial', [Market\ShortlistController::class, 'testimonial'])->name('testimonial');
     Route::post('/requirements', [Market\RequirementController::class, 'save'])->name('requirements.save');
     Route::delete('/requirements/{requirement}', [Market\RequirementController::class, 'destroy'])->name('requirements.destroy');
     Route::get('/profile', [Customer\AccountController::class, 'profile'])->name('profile');
@@ -446,3 +459,14 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::put('/settings/templates/{template}', [App\SettingsController::class, 'updateTemplate'])->middleware('perm:app_settings.update')->name('settings.templates.update');
     Route::get('/settings/ai-usage', [App\SettingsController::class, 'aiUsage'])->middleware('perm:app_settings.view')->name('settings.ai-usage');
 });
+
+/*
+|--------------------------------------------------------------------------
+| SEO category and listing pages (spec 17.7) — last, so they never shadow other routes.
+| /buy · /rent · /buy/flats · /buy/flats/thanjavur · /buy/flats/thanjavur/{listing-slug}
+|--------------------------------------------------------------------------
+*/
+Route::get('/{purpose}/{type}/{city}/{listing}', [Market\ListingController::class, 'show'])->whereIn('purpose', ['buy', 'rent'])
+    ->where(['type' => \App\Listings\ListingTypes::slugPattern(), 'city' => '[a-z0-9\-]+', 'listing' => '[a-z0-9\-]+'])->name('market.listing');
+Route::get('/{purpose}/{type?}/{city?}', [Market\SearchController::class, 'category'])->whereIn('purpose', ['buy', 'rent'])
+    ->where(['type' => \App\Listings\ListingTypes::slugPattern(), 'city' => '[a-z0-9\-]+'])->middleware('throttle:search')->name('market.category');

@@ -39,7 +39,7 @@ class DemoSmokeTest extends TestCase
         }
 
         $admin = $users['admin'];
-        $project = Project::withoutGlobalScopes()->where('status', 'launched')->first();
+        $project = Project::withoutGlobalScopes()->where('name', 'Vallam Green Meadows')->first();
         $tracking = Project::withoutGlobalScopes()->where('status', 'in_progress')->first();
         $sale = Sale::withoutGlobalScopes()->where('status', 'sale_init')->first();
         $reg = Registration::withoutGlobalScopes()->first();
@@ -63,6 +63,14 @@ class DemoSmokeTest extends TestCase
             $this->get(route($name))->assertOk();
         }
         $this->get($project->publicUrl())->assertOk()->assertSee('Vallam Green Meadows');
+        $direct = Project::withoutGlobalScopes()->where('launch_mode', 'direct')->firstOrFail();
+        $this->get($direct->publicUrl())->assertOk()->assertSee('DTCP/LP/77/2025');
+        foreach (\App\Models\Listing::withoutGlobalScopes()->get() as $l) {
+            $this->get($l->publicUrl())->assertStatus($l->status === 'sold' ? 410 : 200);
+        }
+        foreach (['/buy', '/rent', '/buy/plots', '/buy/layouts', '/buy/flats/thanjavur', '/search?q=villa', '/search?view=map'] as $u) {
+            $this->get($u)->assertOk();
+        }
         $plot = Plot::withoutGlobalScopes()->where('project_id', $project->id)->where('status', 'available')->first();
         $plot->setRelation('project', $project);
         $this->get($plot->publicUrl())->assertOk();

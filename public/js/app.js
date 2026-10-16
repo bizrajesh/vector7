@@ -625,6 +625,88 @@
     });
   }
 
+
+  /* ---------- Contact block (spec 17.5): Call / WhatsApp / Show number, asked once for name + mobile + consent ---------- */
+  function initContact() {
+    $$('[data-contact]').forEach(function (box) {
+      var form = $('[data-contact-form]', box), modeInput = $('[data-contact-mode-input]', box), err = $('[data-contact-error]', box);
+      var known = box.getAttribute('data-known') === '1', pending = null;
+      // With JavaScript the details form opens only when a button is tapped (it stays open after a validation error).
+      if (form && !box.querySelector('.error:not(.hidden)')) { form.classList.add('hidden'); }
+      var send = function (mode, withForm) {
+        var fd = withForm && form ? new FormData(form) : new FormData();
+        if (!withForm) { fd.append('_token', ($('meta[name=csrf-token]') || {}).content || ''); var src = form && $('input[name=src]', form); if (src) fd.append('src', src.value); }
+        fd.set('mode', mode);
+        // Open the WhatsApp window synchronously (popup blockers), then point it at wa.me once we have the link.
+        var win = mode === 'whatsapp' ? window.open('', '_blank') : null;
+        fetch(box.getAttribute('data-url'), { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': ($('meta[name=csrf-token]') || {}).content }, body: fd })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              if (win) win.close();
+              if (res.status === 422 && res.j.errors && !withForm) { known = false; form.classList.remove('hidden'); pending = mode; return; }
+              var msg = res.status === 429 ? 'Too many requests — please try again in a minute.' : ((res.j.errors && Object.values(res.j.errors)[0][0]) || res.j.message || 'Something went wrong.');
+              if (err) { err.textContent = msg; err.classList.remove('hidden'); } else { alertBox(msg); }
+              return;
+            }
+            known = true; if (form) form.classList.add('hidden'); if (err) err.classList.add('hidden');
+            var num = $('[data-number]', box); if (num) num.textContent = res.j.display;
+            if (mode === 'call') { window.location.href = res.j.tel; }
+            if (mode === 'whatsapp') { if (win) { win.location.href = res.j.whatsapp; } else { window.location.href = res.j.whatsapp; } }
+          })
+          .catch(function () { if (win) win.close(); alertBox('Could not reach the server. Please try again.'); });
+      };
+      $$('[data-contact-mode]', box).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var mode = btn.getAttribute('data-contact-mode');
+          if (known) { send(mode, false); return; }
+          pending = mode; if (modeInput) modeInput.value = mode;
+          form.classList.remove('hidden'); var first = $('input[name=name]', form); if (first) first.focus();
+        });
+      });
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          send(pending || (modeInput && modeInput.value) || 'show', true);
+        });
+      }
+    });
+  }
+
+  /* ---------- Search page: refine toggle, compare bar (up to 3), dropdowns close on outside click ---------- */
+  function initSearchUi() {
+    var refine = $('[data-refine]');
+    if (refine) {
+      refine.addEventListener('change', function () { $$('[data-refine-field]').forEach(function (f) { f.disabled = !refine.checked; }); });
+    }
+    var bar = $('[data-compare-bar]');
+    var boxes = $$('[data-compare]');
+    if (boxes.length) {
+      var key = 'v7compare', picked = [];
+      try { picked = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch (e) { picked = []; }
+      var sync = function () {
+        try { sessionStorage.setItem(key, JSON.stringify(picked)); } catch (e) { /* private mode */ }
+        boxes.forEach(function (b) { b.checked = picked.indexOf(b.value) !== -1; b.disabled = !b.checked && picked.length >= 3; });
+        if (bar) {
+          bar.classList.toggle('hidden', picked.length === 0);
+          $('[data-compare-count]', bar).textContent = picked.length;
+          var go = $('[data-compare-go]', bar); go.href = go.href.split('?')[0] + '?keys=' + encodeURIComponent(picked.join(','));
+        }
+      };
+      boxes.forEach(function (b) {
+        b.addEventListener('change', function () {
+          if (b.checked && picked.indexOf(b.value) === -1 && picked.length < 3) picked.push(b.value);
+          if (!b.checked) picked = picked.filter(function (k) { return k !== b.value; });
+          sync();
+        });
+      });
+      sync();
+    }
+    document.addEventListener('click', function (e) {
+      $$('details[data-dropdown][open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
+  }
+
   /* ---------- "Write with AI" buttons: send the form's fields, put the draft into a textarea ---------- */
   function initAiWrite() {
     $$('[data-ai-write]').forEach(function (btn) {
@@ -693,6 +775,6 @@
     initSidebar(); initPublicNav(); initDropdowns(); initPasswords(); initWidths(); initConfirm(); initCopy(); initBulk();
     initRepeaters(); initEstimate(); initCalc(); initTooltips(); initPlotFilters(); initCarousels(); initReveal(); initCharts();
     initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid(); initDepends();
-    initKanban(); initMaps(); initAiWrite(); initDropzones(); initSortable();
+    initKanban(); initMaps(); initAiWrite(); initDropzones(); initSortable(); initContact(); initSearchUi();
   });
 })();

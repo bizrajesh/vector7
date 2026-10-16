@@ -8,7 +8,7 @@
         </div>
         <div class="grid gap-6 lg:grid-cols-[14rem_1fr]">
             <nav class="flex gap-1 overflow-x-auto lg:flex-col" aria-label="Account">
-                @foreach ([['Overview', 'account.dashboard', 'home'], ['Bookings', 'account.bookings', 'calendar'], ['Purchases', 'account.purchases', 'cart'], ['Payments & receipts', 'account.payments', 'receipt'], ['Documents', 'account.documents', 'doc'], ['Saved requirements', 'account.requirements', 'bell'], ['Enquiries', 'account.enquiries', 'chat'], ['Help & tickets', 'account.tickets', 'lifebuoy'], ['Profile', 'account.profile', 'user']] as [$l, $r, $i])
+                @foreach ([['Overview', 'account.dashboard', 'home'], ['Bookings', 'account.bookings', 'calendar'], ['Purchases', 'account.purchases', 'cart'], ['Payments & receipts', 'account.payments', 'receipt'], ['Documents', 'account.documents', 'doc'], ['Shortlist & searches', 'account.shortlist', 'star'], ['Saved requirements', 'account.requirements', 'bell'], ['Enquiries', 'account.enquiries', 'chat'], ['Help & tickets', 'account.tickets', 'lifebuoy'], ['Profile', 'account.profile', 'user']] as [$l, $r, $i])
                     @php($on = request()->routeIs($r) || request()->routeIs($r.'.*'))
                     <a href="{{ route($r) }}" class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium no-underline {{ $on ? 'bg-navy text-white' : 'text-navy hover:bg-white' }}" @if ($on) aria-current="page" @endif><x-icon :name="$i" class="h-4 w-4" />{{ $l }}</a>
                 @endforeach

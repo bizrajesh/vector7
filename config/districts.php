@@ -1,0 +1,47 @@
+<?php
+
+/*
+| Neighbouring districts (Tamil Nadu + Puducherry), used when a property search finds fewer than 5 results
+| and widens the area to nearby districts (spec 17.8). Edit freely — keys and values are district names.
+*/
+return [
+    'Ariyalur' => ['Perambalur', 'Tiruchirappalli', 'Thanjavur', 'Cuddalore', 'Mayiladuthurai'],
+    'Chengalpattu' => ['Chennai', 'Kancheepuram', 'Tiruvallur', 'Viluppuram'],
+    'Chennai' => ['Tiruvallur', 'Chengalpattu', 'Kancheepuram'],
+    'Coimbatore' => ['Tiruppur', 'Nilgiris', 'Erode', 'Dindigul'],
+    'Cuddalore' => ['Viluppuram', 'Kallakurichi', 'Perambalur', 'Ariyalur', 'Mayiladuthurai', 'Puducherry'],
+    'Dharmapuri' => ['Krishnagiri', 'Salem', 'Tiruvannamalai'],
+    'Dindigul' => ['Madurai', 'Theni', 'Tiruppur', 'Karur', 'Tiruchirappalli', 'Coimbatore'],
+    'Erode' => ['Salem', 'Namakkal', 'Tiruppur', 'Coimbatore', 'Nilgiris'],
+    'Kallakurichi' => ['Viluppuram', 'Salem', 'Tiruvannamalai', 'Cuddalore', 'Perambalur'],
+    'Kancheepuram' => ['Chennai', 'Chengalpattu', 'Tiruvallur', 'Vellore', 'Ranipet', 'Tiruvannamalai'],
+    'Kanniyakumari' => ['Tirunelveli'],
+    'Karur' => ['Tiruchirappalli', 'Namakkal', 'Dindigul', 'Tiruppur', 'Erode'],
+    'Krishnagiri' => ['Dharmapuri', 'Vellore', 'Tirupathur'],
+    'Madurai' => ['Dindigul', 'Theni', 'Virudhunagar', 'Sivaganga', 'Tiruchirappalli'],
+    'Mayiladuthurai' => ['Nagapattinam', 'Thanjavur', 'Tiruvarur', 'Cuddalore', 'Ariyalur'],
+    'Nagapattinam' => ['Tiruvarur', 'Mayiladuthurai', 'Thanjavur'],
+    'Namakkal' => ['Salem', 'Tiruchirappalli', 'Karur', 'Erode', 'Perambalur'],
+    'Nilgiris' => ['Coimbatore', 'Erode'],
+    'Perambalur' => ['Ariyalur', 'Tiruchirappalli', 'Salem', 'Kallakurichi', 'Cuddalore', 'Namakkal'],
+    'Pudukkottai' => ['Thanjavur', 'Tiruchirappalli', 'Sivaganga', 'Ramanathapuram', 'Tiruvarur'],
+    'Ramanathapuram' => ['Sivaganga', 'Pudukkottai', 'Virudhunagar', 'Thoothukudi'],
+    'Ranipet' => ['Vellore', 'Kancheepuram', 'Tiruvallur', 'Tiruvannamalai'],
+    'Salem' => ['Namakkal', 'Dharmapuri', 'Erode', 'Kallakurichi', 'Perambalur', 'Tiruvannamalai'],
+    'Sivaganga' => ['Madurai', 'Pudukkottai', 'Ramanathapuram', 'Virudhunagar', 'Tiruchirappalli'],
+    'Tenkasi' => ['Tirunelveli', 'Virudhunagar'],
+    'Thanjavur' => ['Tiruvarur', 'Tiruchirappalli', 'Pudukkottai', 'Ariyalur', 'Mayiladuthurai', 'Nagapattinam'],
+    'Theni' => ['Madurai', 'Dindigul', 'Virudhunagar'],
+    'Thoothukudi' => ['Tirunelveli', 'Virudhunagar', 'Ramanathapuram'],
+    'Tiruchirappalli' => ['Thanjavur', 'Pudukkottai', 'Karur', 'Namakkal', 'Perambalur', 'Ariyalur', 'Dindigul', 'Madurai', 'Sivaganga'],
+    'Tirunelveli' => ['Thoothukudi', 'Tenkasi', 'Kanniyakumari', 'Virudhunagar'],
+    'Tirupathur' => ['Vellore', 'Krishnagiri', 'Tiruvannamalai'],
+    'Tiruppur' => ['Coimbatore', 'Erode', 'Dindigul', 'Karur'],
+    'Tiruvallur' => ['Chennai', 'Kancheepuram', 'Ranipet'],
+    'Tiruvannamalai' => ['Vellore', 'Viluppuram', 'Kancheepuram', 'Ranipet', 'Kallakurichi', 'Tirupathur', 'Dharmapuri', 'Salem'],
+    'Tiruvarur' => ['Thanjavur', 'Nagapattinam', 'Mayiladuthurai', 'Pudukkottai'],
+    'Vellore' => ['Ranipet', 'Tirupathur', 'Tiruvannamalai', 'Krishnagiri', 'Kancheepuram'],
+    'Viluppuram' => ['Chengalpattu', 'Tiruvannamalai', 'Kallakurichi', 'Cuddalore', 'Puducherry'],
+    'Virudhunagar' => ['Madurai', 'Sivaganga', 'Ramanathapuram', 'Thoothukudi', 'Tirunelveli', 'Tenkasi', 'Theni'],
+    'Puducherry' => ['Viluppuram', 'Cuddalore'],
+];

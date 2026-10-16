@@ -82,7 +82,8 @@ class Project extends Model
         return $this->hasMany(ListingFeature::class)->with('master');
     }
 
-    public function contact(): \Illuminate\Database\Eloquent\Relations\HasOne
+    /** Contact block (spec 17.5). Named contactBlock because projects.contact is an existing phone column. */
+    public function contactBlock(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(ListingContact::class, 'owner_id')->where('owner_type', 'project');
     }

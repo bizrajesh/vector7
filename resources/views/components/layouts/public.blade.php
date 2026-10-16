@@ -2,7 +2,11 @@
 @php
     $customer = auth('customer')->user();
     $staff = auth('web')->user();
-    $nav = [['Projects', route('market.projects'), 'market.projects*|market.project*|market.plot'], ['Find a plot', route('market.requirement'), 'market.requirement'], ['Services', route('market.services'), 'market.service*'], ['For promoters', route('market.pricing'), 'market.pricing'], ['Support', route('market.support'), 'market.support']];
+    $buy = [['Plots & layouts', \App\Services\PropertySearch::categoryUrl('plot')], ['Flats', \App\Services\PropertySearch::categoryUrl('flat')], ['Villas', \App\Services\PropertySearch::categoryUrl('villa')],
+        ['Independent houses', \App\Services\PropertySearch::categoryUrl('house')], ['Farm land', \App\Services\PropertySearch::categoryUrl('farm_land')], ['Commercial', \App\Services\PropertySearch::categoryUrl('commercial')]];
+    $nav = [['Rent', route('market.category', ['purpose' => 'rent']), 'market.category:rent'], ['New layouts', \App\Services\PropertySearch::categoryUrl('layout'), 'market.projects*|market.project*|market.plot'],
+        ['Services', route('market.services'), 'market.service*'], ['For promoters', route('market.pricing'), 'market.pricing'], ['Support', route('market.support'), 'market.support']];
+    $postUrl = $staff && $staff->tenant_id ? route('ws.listings.create') : route('signup');
     $org = fn ($k) => \App\Services\AppSettings::get($k);
 @endphp
 <!DOCTYPE html>
@@ -33,9 +37,16 @@
             <span class="hidden sm:block"><x-logo class="h-11 w-auto" /></span>
             <span class="sm:hidden"><x-logo variant="compact" class="h-8 w-auto" /></span>
         </a>
-        <nav class="ml-4 hidden flex-1 items-center gap-1 lg:flex" aria-label="Main">
+        <nav class="ml-2 hidden flex-1 items-center gap-1 lg:flex" aria-label="Main">
+            <details class="relative" data-dropdown>
+                <summary class="flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-[15px] font-medium text-navy/80 hover:bg-page hover:text-navy">Buy <x-icon name="chevron-down" class="h-4 w-4" /></summary>
+                <ul class="absolute left-0 top-full z-50 mt-1 w-56 rounded-xl bg-white p-2 shadow-lift ring-1 ring-navy-50">
+                    @foreach ($buy as [$label, $url])<li><a href="{{ $url }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-navy no-underline hover:bg-page">{{ $label }}</a></li>@endforeach
+                    <li class="mt-1 border-t border-navy-50 pt-1"><a href="{{ route('market.category', ['purpose' => 'buy']) }}" class="block rounded-lg px-3 py-2 text-sm font-semibold no-underline hover:bg-page">All properties for sale</a></li>
+                </ul>
+            </details>
             @foreach ($nav as [$label, $url, $pattern])
-                @php($on = request()->routeIs(...explode('|', $pattern)))
+                @php($on = str_starts_with($pattern, 'market.category:') ? request()->routeIs('market.category') && request()->route('purpose') === substr($pattern, 16) : request()->routeIs(...explode('|', $pattern)))
                 <a href="{{ $url }}" class="rounded-lg px-3 py-2 text-[15px] font-medium no-underline {{ $on ? 'text-navy bg-page' : 'text-navy/80 hover:text-navy hover:bg-page' }}" @if ($on) aria-current="page" @endif>{{ $label }}</a>
             @endforeach
         </nav>
@@ -45,15 +56,20 @@
             @else
                 <a href="{{ route('login') }}" class="btn-primary btn-pill hidden sm:inline-flex">Sign in</a>
             @endif
-            <a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="btn-light btn-pill hidden md:inline-flex">Promoter workspace</a>
+            <a href="{{ $postUrl }}" class="btn btn-pill hidden bg-gold text-navy hover:bg-amber-300 md:inline-flex"><x-icon name="plus" class="h-4 w-4" /> Post property</a>
+            <a href="{{ route('market.search') }}" class="rounded-lg p-2 text-navy lg:hidden" aria-label="Search"><x-icon name="search" class="h-6 w-6" /></a>
             <button type="button" class="rounded-lg p-2 lg:hidden" data-nav-toggle aria-controls="public-nav" aria-expanded="false" aria-label="Menu"><x-icon name="menu" class="h-6 w-6" /></button>
         </div>
     </div>
     <nav id="public-nav" class="hidden border-t border-navy-50 px-4 pb-4 lg:hidden" aria-label="Mobile">
+        <p class="px-3 pt-3 text-xs font-bold uppercase tracking-wide text-muted">Buy</p>
+        @foreach ($buy as [$label, $url])<a href="{{ $url }}" class="block rounded-lg px-3 py-2.5 font-medium text-navy no-underline hover:bg-page">{{ $label }}</a>@endforeach
+        <div class="my-2 border-t border-navy-50"></div>
         @foreach ($nav as [$label, $url])<a href="{{ $url }}" class="block rounded-lg px-3 py-3 font-medium text-navy no-underline hover:bg-page">{{ $label }}</a>@endforeach
         <div class="mt-2 grid grid-cols-2 gap-2">
             <a href="{{ $customer ? route('account.dashboard') : route('login') }}" class="btn-primary btn-pill">{{ $customer ? 'My account' : 'Sign in' }}</a>
-            <a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="btn-light btn-pill">Promoter workspace</a>
+            <a href="{{ $postUrl }}" class="btn btn-pill bg-gold text-navy">Post property</a>
+            <a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="btn-light btn-pill col-span-2">Promoter workspace</a>
         </div>
     </nav>
 </header>
@@ -67,7 +83,7 @@
     <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div class="md:col-span-2">
             <x-logo variant="dark" class="h-14 w-auto" />
-            <p class="mt-4 max-w-md text-sm leading-relaxed">Approved residential plots from verified layout promoters. See what is available today, check the price and book online — free for buyers.</p>
+            <p class="mt-4 max-w-md text-sm leading-relaxed">Plots, flats, villas, houses, farm land and commercial space from verified promoters and owners in Tamil Nadu. Real photos, today's price and a direct line to the owner — free for buyers.</p>
             <address class="mt-4 text-sm not-italic leading-relaxed">
                 {{ $org('org.name') }}<br>{{ $org('org.address') }}<br>
                 @if ($org('org.contact')){{ $org('org.contact') }} · @endif<a href="mailto:{{ $org('org.support_email') }}" class="text-teal-200 hover:text-white">{{ $org('org.support_email') }}</a>
@@ -79,9 +95,10 @@
             </div>
         </div>
         <div>
-            <p class="font-bold text-white">Buy a plot</p>
+            <p class="font-bold text-white">Find a property</p>
             <ul class="mt-3 space-y-2 text-sm">
-                <li><a href="{{ route('market.projects') }}" class="text-navy-100 hover:text-white">All projects</a></li>
+                @foreach ($buy as [$label, $url])<li><a href="{{ $url }}" class="text-navy-100 hover:text-white">{{ $label }} for sale</a></li>@endforeach
+                <li><a href="{{ route('market.category', ['purpose' => 'rent']) }}" class="text-navy-100 hover:text-white">Properties for rent</a></li>
                 <li><a href="{{ route('market.requirement') }}" class="text-navy-100 hover:text-white">Find a plot for my needs</a></li>
                 <li><a href="{{ route('market.services') }}" class="text-navy-100 hover:text-white">Legal, survey & loan help</a></li>
                 <li><a href="{{ route('register') }}" class="text-navy-100 hover:text-white">Create a free account</a></li>
@@ -91,6 +108,7 @@
             <p class="font-bold text-white">vector7</p>
             <ul class="mt-3 space-y-2 text-sm">
                 <li><a href="{{ route('market.pricing') }}" class="text-navy-100 hover:text-white">For promoters</a></li>
+                <li><a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="text-navy-100 hover:text-white">Promoter workspace</a></li>
                 <li><a href="{{ route('market.about') }}" class="text-navy-100 hover:text-white">About</a></li>
                 <li><a href="{{ route('market.support') }}" class="text-navy-100 hover:text-white">Support</a></li>
                 <li><a href="{{ route('market.privacy') }}" class="text-navy-100 hover:text-white">Privacy</a></li>
