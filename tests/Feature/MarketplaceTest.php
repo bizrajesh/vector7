@@ -94,8 +94,9 @@ class MarketplaceTest extends TestCase
     {
         [$tenant, , $p] = $this->launched();
         $this->post(route('market.enquiry'), ['project_id' => $p->id, 'name' => 'Asha', 'email' => 'asha@example.com', 'mobile' => '9876543210', 'message' => 'Call me'])->assertSessionHas('ok');
-        $e = Enquiry::withoutGlobalScopes()->latest('id')->first();
-        $this->assertSame($tenant->id, $e->tenant_id);
+        $lead = \App\Models\Lead::withoutGlobalScopes()->latest('id')->first();
+        $this->assertSame($tenant->id, $lead->tenant_id);
+        $this->assertSame('enquiry', $lead->source);
         // honeypot
         $this->post(route('market.enquiry'), ['project_id' => $p->id, 'name' => 'Bot', 'email' => 'b@example.com', 'mobile' => '9876543210', 'message' => 'x', 'website' => 'spam'])->assertSessionHasErrors('website');
     }

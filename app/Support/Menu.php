@@ -17,6 +17,7 @@ class Menu
             'Projects' => [
                 ['Projects', 'ws.projects.index', 'folder', 'projects.view', null],
                 ['Launch & plots', 'ws.launch.index', 'rocket', 'launch.view', 'launch'],
+                ['Property listings', 'ws.listings.index', 'building', 'listings.view', null],
             ],
             'Sales' => [
                 ['Bookings', 'ws.bookings.index', 'calendar', 'bookings.view', 'bookings'],
@@ -24,7 +25,7 @@ class Menu
                 ['Refunds', 'ws.refunds.index', 'refresh', 'refunds.view', 'bookings'],
                 ['Registration', 'ws.registrations.index', 'clipboard', 'registration.view', 'registration'],
                 ['Customers', 'ws.customers.index', 'users', 'tenant_customers.view', null],
-                ['Enquiries', 'ws.enquiries.index', 'chat', 'enquiries.view', null],
+                ['Leads', 'ws.leads.index', 'chat', 'leads.view', 'leads'],
             ],
             'Finance' => [
                 ['Accounts', 'ws.accounts.index', 'rupee', 'accounts.view', 'accounts'],
@@ -61,6 +62,8 @@ class Menu
             'Engage' => [
                 ['Services', 'app.services.index', 'briefcase', 'services.view', null],
                 ['Enquiries', 'app.enquiries.index', 'chat', 'app_enquiries.view', null],
+                ['Listings moderation', 'app.listings.index', 'shield', 'app_listings.view', null],
+                ['Chatbot conversations', 'app.chats.index', 'chat', 'app_chats.view', null],
                 ['Help desk', 'app.tickets.index', 'lifebuoy', 'helpdesk.view', null],
                 ['Marketing', 'app.marketing.index', 'megaphone', 'marketing.view', null],
             ],

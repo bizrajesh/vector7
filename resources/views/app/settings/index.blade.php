@@ -68,6 +68,20 @@
             <x-field name="ai__api_key" type="password" label="Anthropic API key" :placeholder="$masked('ai.api_key') ?: 'Not set'" autocomplete="off" />
             <x-field name="ai__model" label="Model" :value="$s('ai.model')" required hint="Default claude-sonnet-5-5" />
             <x-field name="ai__monthly_cap" type="number" label="Monthly usage cap (credits, all tenants)" :value="$s('ai.monthly_cap')" required />
+            @foreach (\App\Services\ClaudeClient::GROUPS as $g => $cfg)
+                <fieldset class="rounded-xl bg-page p-4 sm:col-span-2 lg:col-span-3">
+                    <legend class="px-1 font-bold">{{ $cfg['label'] }} <span class="text-xs font-normal text-muted">· used today {{ number_format($aiToday[$g] ?? 0) }}</span></legend>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="flex items-end"><input type="hidden" name="ai__{{ $g }}_enabled" value="0"><x-checkbox name="ai__{{ $g }}_enabled" label="On" :checked="$s('ai.'.$g.'_enabled') === '1'" /></div>
+                        <x-field name="ai__{{ $g }}_daily_cap" type="number" label="Daily cap (calls, 0 = no cap)" :value="$s('ai.'.$g.'_daily_cap')" required />
+                        <x-field name="ai__model_{{ $g }}" label="Model (blank = default)" :value="$s('ai.model_'.$g)" :hint="$g === 'market_search' ? 'A cheaper model, e.g. claude-haiku-5-5, is fine for search' : null" />
+                    </div>
+                </fieldset>
+            @endforeach
+            <x-field name="ai__bot_name" label="Chatbot name" :value="$s('ai.bot_name')" required />
+            <x-textarea name="ai__bot_greeting" label="Chatbot greeting" :value="$s('ai.bot_greeting')" rows="2" class="sm:col-span-2" required />
+            <x-textarea name="ai__faq" label="FAQ the chatbot can use" :value="$s('ai.faq')" rows="8" class="sm:col-span-2 lg:col-span-3" hint="One question per line followed by its answer, with a blank line between entries." />
+            <p class="text-sm text-muted sm:col-span-2 lg:col-span-3">Marketplace search and the marketplace chatbot use the App's AI budget; the workspace chatbot and AI drafting use each tenant's monthly AI credits. When a feature is off or its cap is reached, search falls back to keyword + filter search and the chatbots show a polite message.</p>
             {!! $pw !!}
             <div><button class="btn-primary">Save</button></div>
         </form>

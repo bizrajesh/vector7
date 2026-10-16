@@ -36,12 +36,12 @@ class PlatformSeeder extends Seeder
 
         $allModules = array_keys(config('permissions.plan_modules'));
         $plans = [
-            ['Starter', 'starter', 'For individual promoters launching their first layout.', 1999, 14, true, ['masters', 'estimates', 'tracking', 'launch', 'bookings', 'accounts'],
-                ['storage_mb' => 1024, 'projects' => 2, 'ai_credits' => 50, 'users_tenant_admin' => 1, 'users_tenant_manager' => 1, 'users_tenant_sales' => 2, 'users_tenant_account' => 1, 'users_support' => 1]],
+            ['Starter', 'starter', 'For individual promoters launching their first layout.', 1999, 14, true, ['masters', 'estimates', 'tracking', 'launch', 'bookings', 'accounts', 'leads'],
+                ['storage_mb' => 1024, 'projects' => 2, 'listings' => 10, 'images_per_listing' => 12, 'ai_credits' => 50, 'users_tenant_admin' => 1, 'users_tenant_manager' => 1, 'users_tenant_sales' => 2, 'users_tenant_account' => 1, 'users_support' => 1]],
             ['Professional', 'professional', 'For growing promoters with several active layouts.', 4999, 14, false, $allModules,
-                ['storage_mb' => 10240, 'projects' => 10, 'ai_credits' => 500, 'users_tenant_admin' => 2, 'users_tenant_manager' => 3, 'users_tenant_sales' => 10, 'users_tenant_account' => 3, 'users_support' => 3]],
+                ['storage_mb' => 10240, 'projects' => 10, 'listings' => 100, 'images_per_listing' => 20, 'ai_credits' => 500, 'users_tenant_admin' => 2, 'users_tenant_manager' => 3, 'users_tenant_sales' => 10, 'users_tenant_account' => 3, 'users_support' => 3]],
             ['Enterprise', 'enterprise', 'Unlimited projects and users for large organisations.', 14999, 14, false, $allModules,
-                ['storage_mb' => 102400, 'projects' => -1, 'ai_credits' => 5000, 'users_tenant_admin' => -1, 'users_tenant_manager' => -1, 'users_tenant_sales' => -1, 'users_tenant_account' => -1, 'users_support' => -1]],
+                ['storage_mb' => 102400, 'projects' => -1, 'listings' => -1, 'images_per_listing' => 20, 'ai_credits' => 5000, 'users_tenant_admin' => -1, 'users_tenant_manager' => -1, 'users_tenant_sales' => -1, 'users_tenant_account' => -1, 'users_support' => -1]],
         ];
         foreach ($plans as $i => [$name, $slug, $desc, $price, $trial, $default, $modules, $limits]) {
             $plan = Plan::firstOrCreate(['slug' => $slug], [

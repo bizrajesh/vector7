@@ -1,4 +1,5 @@
 <x-layouts.workspace :title="'Launch — '.$project->name">
+    @include('partials.leaflet')
     @php($layoutUrl = $project->layout_file_id ? route('files.show', $project->layout_file_id) : null)
     <x-page-header :title="$project->name" :subtitle="$project->project_code.' · '.$project->location.' · '.$plots->count().' plots'" :back="route('ws.launch.index')">
         @if ($project->status === 'launched')<a href="{{ $project->publicUrl() }}" class="btn-light" target="_blank" rel="noopener"><x-icon name="globe" class="h-4 w-4" /> Public page</a>@endif
@@ -133,24 +134,21 @@
                 @endif
             </div>
 
-            <div class="card card-pad">
-                <h2 class="section-title">Gallery</h2>
-                <div class="mt-3 grid grid-cols-3 gap-2">
-                    @foreach ($gallery as $img)
-                        <div class="relative">
-                            <img src="{{ route('files.show', $img) }}" alt="{{ $img->original_name }}" class="aspect-square w-full rounded-lg object-cover" loading="lazy">
-                            @if ($canEdit)<form method="POST" action="{{ route('ws.launch.gallery.remove', [$project, $img]) }}" class="absolute right-1 top-1" data-confirm="Remove this photo?">@csrf @method('DELETE')<button class="rounded-full bg-white/90 p-1 text-red-700 shadow" aria-label="Remove photo"><x-icon name="x" class="h-3 w-3" /></button></form>@endif
-                        </div>
-                    @endforeach
-                </div>
-                @if ($canEdit)
-                    <form method="POST" action="{{ route('ws.launch.gallery', $project) }}" enctype="multipart/form-data" class="mt-3 flex flex-wrap items-end gap-2">
-                        @csrf
-                        <x-field name="images[]" type="file" label="Add photos" accept=".jpg,.jpeg,.png,.webp" multiple required class="flex-1" />
-                        <button class="btn-light">Upload</button>
-                    </form>
-                @endif
-            </div>
+            <form method="POST" action="{{ route('ws.launch.marketplace', $project) }}" class="card card-pad space-y-4">
+                @csrf
+                <h2 class="section-title">Marketplace details</h2>
+                <fieldset class="grid gap-3 sm:grid-cols-2" @disabled(! $canEdit)>
+                    <x-select name="approval_authority" label="Approval authority" :options="\App\Http\Controllers\Tenant\QuickLaunchController::AUTHORITIES" :value="$project->approval_authority" placeholder="—" />
+                    <x-field name="approval_number" label="Approval / LP / RERA no." :value="$project->approval_number" hint="Shown as a trust badge." />
+                    <x-field name="lat" label="Latitude" :value="$project->lat" id="lp_lat" inputmode="decimal" />
+                    <x-field name="lng" label="Longitude" :value="$project->lng" id="lp_lng" inputmode="decimal" />
+                </fieldset>
+                <div class="h-48 rounded-xl ring-1 ring-navy-50" data-map-picker data-lat="lp_lat" data-lng="lp_lng" role="application" aria-label="Map: tap to set the layout location"></div>
+                <fieldset @disabled(! $canEdit)>@include('partials.property.features', ['features' => $features, 'selected' => $selectedFeatures, 'highlights' => $highlights])</fieldset>
+                <fieldset @disabled(! $canEdit)>@include('partials.property.contact', ['contact' => $contact])</fieldset>
+                @if ($canEdit)<button class="btn-primary">Save marketplace details</button>@endif
+            </form>
         </div>
     </div>
+    <div class="mt-6">@include('partials.property.media', ['owner' => $project, 'kind' => 'project', 'canEdit' => $canEdit])</div>
 </x-layouts.workspace>

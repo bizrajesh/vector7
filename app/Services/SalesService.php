@@ -117,9 +117,26 @@ class SalesService
             ];
             Notify::send('booking_created', [$customer->email], $data, $tenant->id);
             Notify::groups($tenant->id, ['Sales Team'], 'booking_created', $data);
+            self::bookingLead($booking, $customer);
 
             return $booking;
         });
+    }
+
+    /** Every booking creates or updates the buyer's lead (source Booking) and marks it Won (spec 17.5 / 17.6). */
+    private static function bookingLead(Booking $booking, Customer $customer): void
+    {
+        try {
+            $lead = LeadService::capture($booking->tenant_id, 'booking', ['name' => $customer->name, 'mobile' => $customer->mobile, 'email' => $customer->email,
+                'customer_id' => $customer->id, 'consent' => true], ['project_id' => $booking->project_id, 'plot_id' => $booking->plot_id],
+                'Booking '.$booking->booking_no.' – Plot '.$booking->plot->plot_no.', '.$booking->project->name);
+            $won = \App\Models\LeadStage::withoutGlobalScopes()->where('tenant_id', $booking->tenant_id)->where('is_won', true)->first();
+            if ($won && $lead->lead_stage_id !== $won->id) {
+                app(Tenancy::class)->run(Tenant::find($booking->tenant_id), fn () => LeadService::moveTo($lead, $won));
+            }
+        } catch (\Throwable $e) {
+            report($e); // never block a booking because of the CRM
+        }
     }
 
     /** Release a booking (expiry or cancellation): plot back to Available, promo use returned. */

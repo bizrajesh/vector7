@@ -56,6 +56,16 @@ class Customer extends Authenticatable
         return $this->hasMany(Enquiry::class);
     }
 
+    public function shortlists(): HasMany
+    {
+        return $this->hasMany(CustomerShortlist::class);
+    }
+
+    public function savedSearches(): HasMany
+    {
+        return $this->hasMany(SavedSearch::class);
+    }
+
     public function requirements(): HasMany
     {
         return $this->hasMany(CustomerRequirement::class);

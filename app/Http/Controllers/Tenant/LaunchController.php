@@ -44,6 +44,12 @@ class LaunchController extends Controller
             'canGoLive' => $request->user()->hasPerm('launch.approve'),
             'aiReady' => ClaudeClient::available(),
             'stats' => $plots->groupBy('status')->map->count(),
+            'features' => \App\Models\FeatureMaster::forType('layout')->get()->groupBy('group'),
+            'selectedFeatures' => $project->featureRows->whereNotNull('feature_master_id')->pluck('feature_master_id')->all(),
+            'highlights' => $project->featureRows->whereNotNull('custom_text')->pluck('custom_text')->values()->all(),
+            'contact' => $project->contact ? ['contact_name' => $project->contact->name, 'contact_mobile' => $project->contact->mobile, 'contact_whatsapp' => $project->contact->whatsapp,
+                'contact_email' => $project->contact->email, 'allow_call' => $project->contact->allow_call, 'allow_whatsapp' => $project->contact->allow_whatsapp, 'allow_email' => $project->contact->allow_email]
+                : \App\Services\PropertyDetails::contactDefaults($project->tenantRel),
         ]);
     }
 
@@ -82,6 +88,27 @@ class LaunchController extends Controller
         return back()->with('ok', 'Promotion details saved.');
     }
 
+    /** Approval badge, map pin, features and contact block for the marketplace (spec 17.1 / 17.4 / 17.5). */
+    public function marketplace(Request $request, Project $project)
+    {
+        $this->writable($project);
+        $data = $request->validate([
+            'approval_authority' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(QuickLaunchController::AUTHORITIES))],
+            'approval_number' => 'nullable|string|max:60',
+            'lat' => 'nullable|numeric|between:-90,90',
+            'lng' => 'nullable|numeric|between:-180,180',
+        ] + \App\Services\PropertyDetails::featureRules() + \App\Services\PropertyDetails::contactRules(), \App\Services\PropertyDetails::contactMessages());
+        $contact = \App\Services\PropertyDetails::contactFromRequest($request, array_intersect_key($data, \App\Services\PropertyDetails::contactRules()));
+        if (! \App\Services\PropertyDetails::hasMode($contact)) {
+            return back()->withInput()->withErrors(['allow_call' => 'Choose at least one mode of contact.']);
+        }
+        $project->update(array_intersect_key($data, array_flip(['approval_authority', 'approval_number', 'lat', 'lng'])));
+        \App\Services\PropertyDetails::syncFeatures($project, (array) ($data['features'] ?? []), (array) ($data['highlights'] ?? []), 'layout');
+        \App\Services\PropertyDetails::saveContact($project, $contact);
+
+        return back()->with('ok', 'Marketplace details saved.');
+    }
+
     /** "Write with AI" for the promotion text. */
     public function aiText(Request $request, Project $project)
     {
@@ -104,25 +131,20 @@ class LaunchController extends Controller
         return back()->withInput(['promo_text' => trim($text), 'facilities_text' => implode("\n", $project->facilities ?? []), 'map_url' => $project->map_url])->with('ok', 'AI draft added below — review and save it.');
     }
 
+    /** Older "Add photos" endpoint — now goes through the shared media pipeline (WebP, thumbnails, EXIF removed). */
     public function gallery(Request $request, Project $project)
     {
         $this->writable($project);
-        $request->validate(['images' => 'required|array|max:12', 'images.*' => FileStore::rules('image', 8192)]);
-        $ids = $project->gallery ?? [];
-        foreach ($request->file('images') as $img) {
-            $ids[] = FileStore::store($img, 'gallery', $project->tenant_id, $project, 'image')->id;
-        }
-        $project->update(['gallery' => array_slice($ids, -20)]);
+        $request->validate(['images' => 'required|array|max:'.\App\Services\PropertyMedia::MAX_IMAGES, 'images.*' => \App\Services\PropertyMedia::imageRules()]);
+        \App\Services\PropertyMedia::addImages($project, $request->file('images'));
 
-        return back()->with('ok', 'Photos added to the gallery.');
+        return back()->with('ok', 'Photos added.');
     }
 
-    public function removeImage(Project $project, StorageFile $file)
+    public function removeImage(Project $project, int $file)
     {
         $this->writable($project);
-        abort_unless(in_array($file->id, $project->gallery ?? [], true), 404);
-        $project->update(['gallery' => array_values(array_diff($project->gallery, [$file->id]))]);
-        FileStore::delete($file);
+        \App\Services\PropertyMedia::delete($project->images()->where(fn ($q) => $q->whereKey($file)->orWhere('file_id', $file))->firstOrFail());
 
         return back()->with('ok', 'Photo removed.');
     }

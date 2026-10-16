@@ -24,6 +24,7 @@ class SettingsController extends Controller
             'masked' => fn (string $k) => AppSettings::masked($k),
             'social' => SocialAccount::whereNull('tenant_id')->get()->keyBy('platform'),
             'aiUsed' => (int) AiUsageLog::where('created_at', '>=', now()->startOfMonth())->sum('credits'),
+            'aiToday' => collect(\App\Services\ClaudeClient::GROUPS)->map(fn ($g, $k) => \App\Services\ClaudeClient::usedToday($k))->all(),
         ]);
     }
 
@@ -39,7 +40,11 @@ class SettingsController extends Controller
                 'payment.swipe_api_base' => 'nullable|url', 'payment.swipe_api_key' => 'nullable|string|max:300', 'payment.swipe_webhook_secret' => 'nullable|string|max:200'],
             'smtp' => ['smtp.host' => 'nullable|string|max:150', 'smtp.port' => 'nullable|integer|min:1|max:65535', 'smtp.encryption' => 'nullable|in:ssl,tls,none',
                 'smtp.username' => 'nullable|string|max:150', 'smtp.password' => 'nullable|string|max:200', 'smtp.from_address' => 'nullable|email', 'smtp.from_name' => 'nullable|string|max:100'],
-            'ai' => ['ai.enabled' => 'nullable|boolean', 'ai.api_key' => 'nullable|string|max:300', 'ai.model' => 'required|string|max:60', 'ai.monthly_cap' => 'required|integer|min:0|max:10000000'],
+            'ai' => ['ai.enabled' => 'nullable|boolean', 'ai.api_key' => 'nullable|string|max:300', 'ai.model' => 'required|string|max:60', 'ai.monthly_cap' => 'required|integer|min:0|max:10000000',
+                'ai.market_search_enabled' => 'nullable|boolean', 'ai.market_search_daily_cap' => 'required|integer|min:0|max:1000000', 'ai.model_market_search' => 'nullable|string|max:60',
+                'ai.market_chat_enabled' => 'nullable|boolean', 'ai.market_chat_daily_cap' => 'required|integer|min:0|max:1000000', 'ai.model_market_chat' => 'nullable|string|max:60',
+                'ai.workspace_chat_enabled' => 'nullable|boolean', 'ai.workspace_chat_daily_cap' => 'required|integer|min:0|max:1000000', 'ai.model_workspace_chat' => 'nullable|string|max:60',
+                'ai.bot_name' => 'required|string|max:30', 'ai.bot_greeting' => 'required|string|max:500', 'ai.faq' => 'nullable|string|max:20000'],
             'storage' => ['storage.driver' => 'required|in:'.implode(',', array_keys(FileStore::DRIVERS)),
                 'storage.s3_key' => 'nullable|string|max:150', 'storage.s3_secret' => 'nullable|string|max:200', 'storage.s3_region' => 'nullable|string|max:40', 'storage.s3_bucket' => 'nullable|string|max:100', 'storage.s3_endpoint' => 'nullable|url',
                 'storage.gcs_bucket' => 'nullable|string|max:100', 'storage.gcs_credentials' => 'nullable|string|max:10000',

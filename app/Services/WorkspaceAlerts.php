@@ -60,10 +60,15 @@ class WorkspaceAlerts
                     $alerts[] = ['level' => 'amber', 'text' => "$n refund request(s) waiting for approval.", 'link' => route('ws.refunds.index'), 'banner' => false];
                 }
             }
-            if ($user->hasPerm('enquiries.view')) {
-                $n = Enquiry::where('status', 'new')->count();
+            if ($user->hasPerm('leads.view') && PlanLimiter::moduleEnabled($tenant, 'leads')) {
+                $mine = \App\Models\Lead::visibleTo($user)->when($user->role?->base_role === 'tenant_sales', fn ($q) => $q->where('assigned_to', $user->id));
+                $due = (clone $mine)->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', today()->endOfDay())->count();
+                if ($due) {
+                    $alerts[] = ['level' => 'amber', 'text' => "$due lead follow-up(s) due today or overdue.", 'link' => route('ws.leads.index', ['view' => 'list', 'due' => 'overdue']), 'banner' => false];
+                }
+                $n = \App\Models\Lead::visibleTo($user)->whereHas('stage', fn ($q) => $q->where('key', 'new'))->count();
                 if ($n) {
-                    $alerts[] = ['level' => 'teal', 'text' => "$n new enquir".($n > 1 ? 'ies' : 'y').'.', 'link' => route('ws.enquiries.index', ['status' => 'new']), 'banner' => false];
+                    $alerts[] = ['level' => 'teal', 'text' => "$n new lead".($n > 1 ? 's' : '').' waiting for first contact.', 'link' => route('ws.leads.index', ['view' => 'list']), 'banner' => false];
                 }
             }
         } else {

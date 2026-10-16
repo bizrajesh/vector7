@@ -547,6 +547,145 @@
     });
   }
 
+  /* ---------- Leads kanban: drag cards between stages (keyboard users use the "Move to" form on each card) ---------- */
+  function initKanban() {
+    var board = $('[data-kanban]');
+    if (!board || board.getAttribute('data-can-move') !== '1') return;
+    var token = ($('meta[name=csrf-token]') || {}).content;
+    var dragged = null;
+    $$('.kanban-card', board).forEach(function (card) {
+      card.addEventListener('dragstart', function (e) { dragged = card; card.classList.add('opacity-50'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.getAttribute('data-lead')); });
+      card.addEventListener('dragend', function () { card.classList.remove('opacity-50'); dragged = null; $$('.kanban-col', board).forEach(function (c) { c.classList.remove('ring-2'); }); });
+    });
+    var recount = function () { $$('.kanban-col', board).forEach(function (c) { var n = $('[data-count]', c); if (n) n.textContent = $$('.kanban-card', c).length; }); };
+    $$('.kanban-col', board).forEach(function (col) {
+      col.addEventListener('dragover', function (e) { if (dragged) { e.preventDefault(); col.classList.add('ring-2'); } });
+      col.addEventListener('dragleave', function () { col.classList.remove('ring-2'); });
+      col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        col.classList.remove('ring-2');
+        if (!dragged) return;
+        var card = dragged, from = card.parentNode, stage = col.getAttribute('data-stage');
+        if (col.getAttribute('data-lost') === '1') { window.location = card.querySelector('a').getAttribute('href') + '?lost=1'; return; }
+        $('[data-drop]', col).prepend(card);
+        recount();
+        var sel = $('select[name=stage_id]', card); if (sel) sel.value = stage;
+        fetch(card.getAttribute('data-url'), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+          body: JSON.stringify({ stage_id: stage })
+        }).then(function (r) {
+          if (!r.ok) { from.prepend(card); recount(); return r.json().then(function (j) { if (j && j.url) window.location = j.url; }); }
+        }).catch(function () { from.prepend(card); recount(); });
+      });
+    });
+    $$('.kanban-move', board).forEach(function (f) { f.classList.add('sr-only-focusable'); });
+  }
+
+  /* ---------- Maps (Leaflet 1.9.4 + OpenStreetMap) ---------- */
+  var OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  var OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  function initMaps() {
+    if (!window.L) return;
+    // Pick a point: click the map or type latitude / longitude.
+    $$('[data-map-picker]').forEach(function (el) {
+      var lat = document.getElementById(el.getAttribute('data-lat')), lng = document.getElementById(el.getAttribute('data-lng'));
+      var has = lat.value && lng.value;
+      var map = L.map(el, { scrollWheelZoom: false }).setView(has ? [parseFloat(lat.value), parseFloat(lng.value)] : [10.787, 79.1378], has ? 15 : 9);
+      L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR }).addTo(map);
+      var marker = has ? L.marker([parseFloat(lat.value), parseFloat(lng.value)]).addTo(map) : null;
+      var place = function (ll) {
+        if (marker) { marker.setLatLng(ll); } else { marker = L.marker(ll).addTo(map); }
+        lat.value = ll.lat.toFixed(7); lng.value = ll.lng.toFixed(7);
+      };
+      map.on('click', function (e) { place(e.latlng); });
+      [lat, lng].forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          var a = parseFloat(lat.value), b = parseFloat(lng.value);
+          if (!isNaN(a) && !isNaN(b)) { place(L.latLng(a, b)); map.setView([a, b], 15); }
+        });
+      });
+    });
+    // Show pins: data-map-pins="<id of JSON script>"; each pin {lat, lng, title, price, url, type}
+    $$('[data-map-pins]').forEach(function (el) {
+      var src = document.getElementById(el.getAttribute('data-map-pins'));
+      var pins = []; try { pins = JSON.parse(src.textContent); } catch (e) { pins = []; }
+      var map = L.map(el, { scrollWheelZoom: false });
+      L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR }).addTo(map);
+      var bounds = [];
+      pins.forEach(function (p) {
+        if (p.lat === null || p.lng === null) return;
+        var m = L.marker([p.lat, p.lng]).addTo(map);
+        m.bindPopup('<strong>' + esc(p.title) + '</strong><br>' + esc(p.type || '') + (p.price ? '<br>' + esc(p.price) : '') + (p.url ? '<br><a href="' + esc(p.url) + '">View</a>' : ''));
+        bounds.push([p.lat, p.lng]);
+      });
+      if (bounds.length > 1) { map.fitBounds(bounds, { padding: [30, 30] }); }
+      else if (bounds.length === 1) { map.setView(bounds[0], 15); }
+      else { map.setView([10.787, 79.1378], 8); }
+    });
+  }
+
+  /* ---------- "Write with AI" buttons: send the form's fields, put the draft into a textarea ---------- */
+  function initAiWrite() {
+    $$('[data-ai-write]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var form = btn.closest('form'), target = document.getElementById(btn.getAttribute('data-ai-write'));
+        var token = ($('meta[name=csrf-token]') || {}).content, fd = new FormData();
+        $$('input, select, textarea', form).forEach(function (f) {
+          if (!f.name || f.type === 'file' || f.type === 'password' || f.name === '_token' || f.name === '_method') return;
+          if ((f.type === 'checkbox' || f.type === 'radio') && !f.checked) return;
+          fd.append('fields[' + f.name.replace(/\[\]$/, '') + '][]', f.value);
+        });
+        fd.append('kind', btn.getAttribute('data-ai-kind') || 'description');
+        var label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Writing…';
+        fetch(btn.getAttribute('data-url'), { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }, body: fd })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (res.ok && res.j.text) { target.value = res.j.text; target.dispatchEvent(new Event('input')); }
+            else { alertBox((res.j && (res.j.message || res.j.error)) || 'The AI could not write a draft right now.'); }
+          })
+          .catch(function () { alertBox('The AI could not write a draft right now.'); })
+          .finally(function () { btn.disabled = false; btn.innerHTML = label; });
+      });
+    });
+  }
+
+  /* ---------- Drop zones: show chosen file names, highlight on drag ---------- */
+  function initDropzones() {
+    $$('input[type=file][data-dropzone]').forEach(function (input) {
+      var zone = input.closest('.dropzone');
+      var note = document.createElement('span'); note.className = 'text-xs font-semibold text-teal-800'; note.setAttribute('aria-live', 'polite');
+      zone.appendChild(note);
+      var show = function () { var n = input.files ? input.files.length : 0; note.textContent = n ? n + ' file(s) chosen: ' + Array.prototype.slice.call(input.files, 0, 4).map(function (f) { return f.name; }).join(', ') + (n > 4 ? '…' : '') : ''; };
+      input.addEventListener('change', show);
+      ['dragenter', 'dragover'].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { zone.addEventListener(ev, function () { zone.classList.remove('is-over'); }); });
+      zone.addEventListener('drop', function (e) { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) { input.files = e.dataTransfer.files; show(); } });
+    });
+  }
+
+  /* ---------- Drag to reorder photos (data-sortable="<url>"); arrow buttons do the same for keyboard users ---------- */
+  function initSortable() {
+    $$('[data-sortable]').forEach(function (list) {
+      var url = list.getAttribute('data-sortable'); if (!url) return;
+      var token = ($('meta[name=csrf-token]') || {}).content, dragged = null;
+      $$('[data-id]', list).forEach(function (item) {
+        item.addEventListener('dragstart', function (e) { dragged = item; item.classList.add('opacity-50'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.getAttribute('data-id')); });
+        item.addEventListener('dragend', function () { item.classList.remove('opacity-50'); });
+        item.addEventListener('dragover', function (e) {
+          if (!dragged || dragged === item) return; e.preventDefault();
+          var r = item.getBoundingClientRect(), after = (e.clientX - r.left) > r.width / 2;
+          list.insertBefore(dragged, after ? item.nextSibling : item);
+        });
+        item.addEventListener('drop', function (e) {
+          e.preventDefault();
+          var ids = $$('[data-id]', list).map(function (li) { return li.getAttribute('data-id'); });
+          fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ ids: ids }) });
+        });
+      });
+    });
+  }
+
   /* ---------- Print buttons ---------- */
   function initPrint() { $$('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); }); }
 
@@ -554,5 +693,6 @@
     initSidebar(); initPublicNav(); initDropdowns(); initPasswords(); initWidths(); initConfirm(); initCopy(); initBulk();
     initRepeaters(); initEstimate(); initCalc(); initTooltips(); initPlotFilters(); initCarousels(); initReveal(); initCharts();
     initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid(); initDepends();
+    initKanban(); initMaps(); initAiWrite(); initDropzones(); initSortable();
   });
 })();

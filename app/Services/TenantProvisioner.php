@@ -91,6 +91,22 @@ class TenantProvisioner
         foreach ([['Management', 'Project status changes, budget alerts, paused projects'], ['Sales Team', 'Bookings created or expiring, instalments due or overdue'], ['Accounts', 'Receipts, expenses, budget alerts']] as [$name, $desc]) {
             NotificationGroup::firstOrCreate(['tenant_id' => $tenant->id, 'name' => $name], ['type' => 'Email', 'description' => $desc]);
         }
+        foreach (\App\Models\LeadStage::DEFAULTS as $i => [$key, $name, $color, $won, $lost]) {
+            \App\Models\LeadStage::withoutGlobalScopes()->firstOrCreate(['tenant_id' => $tenant->id, 'key' => $key], ['name' => $name, 'sort' => $i, 'color' => $color, 'is_won' => $won, 'is_lost' => $lost]);
+        }
+        TenantSetting::where('tenant_id', $tenant->id)->whereNull('contact_mobile')->update([
+            'contact_name' => $tenant->name, 'contact_mobile' => $tenant->contact ?: $tenant->mobile,
+            'contact_whatsapp' => $tenant->contact ?: $tenant->mobile, 'contact_email' => $tenant->support_email ?: $tenant->email,
+        ]);
+        if (! \App\Models\WhatsappTemplate::withoutGlobalScopes()->where('tenant_id', $tenant->id)->exists()) {
+            foreach ([
+                ['First reply', 'Hi {name}, thank you for your interest in {listing}. I am {user} from {promoter}. When is a good time to call you?'],
+                ['Site visit invite', 'Hi {name}, we would be happy to show you {listing}. Shall we plan a site visit this weekend? – {user}, {promoter}'],
+                ['Offer reminder', 'Hi {name}, the current offer on {listing} ends soon. Let me know if you would like to book. – {user}, {promoter}'],
+            ] as [$name, $body]) {
+                \App\Models\WhatsappTemplate::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => $name, 'body' => $body]);
+            }
+        }
         foreach (['Approval fees', 'Survey & legal', 'Civil works', 'Electrical', 'Marketing', 'Broker commission', 'Refunds', 'Office & admin', 'Other'] as $cat) {
             ExpenseCategory::firstOrCreate(['tenant_id' => $tenant->id, 'name' => $cat]);
         }

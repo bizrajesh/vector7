@@ -28,6 +28,8 @@ class PlanLimiter
     public const LIMIT_LABELS = [
         'storage_mb' => 'Storage',
         'projects' => 'Projects',
+        'listings' => 'Active listings',
+        'images_per_listing' => 'Images per listing',
         'ai_credits' => 'AI credits / month',
         'users_tenant_admin' => 'Tenant Admin users',
         'users_tenant_manager' => 'Manager users',
@@ -42,6 +44,9 @@ class PlanLimiter
             'storage_mb' => round($tenant->storage_used_bytes / 1048576, 2),
             'projects' => Project::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNull('deleted_at')->where('status', '!=', 'closed')->count(),
             'ai_credits' => (int) AiUsageLog::where('tenant_id', $tenant->id)->where('created_at', '>=', now()->startOfMonth())->sum('credits'),
+            'listings' => \App\Models\Listing::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNull('deleted_at')->whereIn('status', \App\Models\Listing::LIVE)->count(),
+            'images_per_listing' => (int) \App\Models\ListingImage::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNotNull('listing_id')
+                ->selectRaw('count(*) as n')->groupBy('listing_id')->orderByDesc('n')->value('n'),
             default => str_starts_with($key, 'users_')
                 ? User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereHas('role', fn ($q) => $q->withoutGlobalScopes()->where('base_role', array_search($key, self::USER_ROLE_KEYS, true)))->count()
                 : 0,

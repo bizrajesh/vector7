@@ -46,6 +46,8 @@ class Project extends Model
             'actual_end_date' => 'date',
             'launched_at' => 'datetime',
             'is_featured' => 'boolean',
+            'lat' => 'float',
+            'lng' => 'float',
         ];
     }
 
@@ -62,6 +64,57 @@ class Project extends Model
                 $p->slug = $slug;
             }
         });
+    }
+
+    /** Direct launch (spec 17.1): approved layout published without estimate / Go-No-Go / stage tracking. */
+    public function isDirect(): bool
+    {
+        return $this->launch_mode === 'direct';
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ListingImage::class)->orderByDesc('is_cover')->orderBy('sort')->orderBy('id');
+    }
+
+    public function featureRows(): HasMany
+    {
+        return $this->hasMany(ListingFeature::class)->with('master');
+    }
+
+    public function contact(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ListingContact::class, 'owner_id')->where('owner_type', 'project');
+    }
+
+    public function brochure(): BelongsTo
+    {
+        return $this->belongsTo(StorageFile::class, 'brochure_file_id');
+    }
+
+    public function featureNames(): array
+    {
+        $names = $this->featureRows->map(fn ($f) => $f->master?->name ?? $f->custom_text)->filter()->values()->all();
+
+        return array_values(array_unique(array_merge($names, $this->facilities ?? [])));
+    }
+
+    public function featureChips(): array
+    {
+        $chips = $this->featureRows->map(fn ($f) => ['name' => $f->master?->name ?? $f->custom_text, 'icon' => $f->master?->icon ?? 'star'])->filter(fn ($c) => $c['name'])->values()->all();
+        foreach ($this->facilities ?? [] as $f) {
+            if (! collect($chips)->contains('name', $f)) {
+                $chips[] = ['name' => $f, 'icon' => 'check'];
+            }
+        }
+
+        return $chips;
+    }
+
+    /** Trust badge text, e.g. "DTCP LP No. 45/2026". */
+    public function approvalBadge(): ?string
+    {
+        return $this->approval_number ? trim(($this->approval_authority ?: 'Approval').' '.$this->approval_number) : null;
     }
 
     public function scopeLaunched(Builder $q): Builder

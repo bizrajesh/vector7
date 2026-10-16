@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Enquiry;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\Notify;
 use App\Support\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -51,10 +50,10 @@ class EnquiryController extends Controller
         $handedToTenant = $data['assigned_team'] === 'tenant' && (int) $data['tenant_id'] !== (int) $enquiry->tenant_id;
         $enquiry->update($data);
         if ($handedToTenant && ($tenant = Tenant::find($data['tenant_id']))) {
-            Notify::groups($tenant->id, ['Sales Team'], 'enquiry_received', [
-                'name' => $enquiry->name, 'email' => $enquiry->email, 'mobile' => (string) $enquiry->mobile,
-                'project' => $enquiry->project?->name ?? 'your projects', 'message' => $enquiry->message, 'link' => route('ws.enquiries.index'),
-            ]);
+            // Handing an enquiry to a promoter creates (or merges into) a lead in their Leads.
+            \App\Services\LeadService::capture($tenant->id, 'enquiry', ['name' => $enquiry->name, 'email' => $enquiry->email, 'mobile' => $enquiry->mobile,
+                'customer_id' => $enquiry->customer_id, 'message' => $enquiry->message, 'consent' => true],
+                array_filter(['project_id' => $enquiry->project_id, 'plot_id' => $enquiry->plot_id]), 'Forwarded by the vector7 team: '.$enquiry->message);
         }
 
         return back()->with('ok', 'Enquiry updated.');

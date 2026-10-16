@@ -44,6 +44,8 @@ class BookingController extends Controller
             'projects' => Project::launched()->orderBy('name')->pluck('name', 'id'),
             'disclaimer' => app(Tenancy::class)->get()->setting()->disclaimer_booking,
             'plot' => $request->query('plot') ? Plot::with('project')->find($request->query('plot')) : null,
+            // "Convert to booking" from a lead pre-fills the buyer (spec 17.6); the booking then marks the lead Won.
+            'lead' => $request->query('lead') ? \App\Models\Lead::visibleTo($request->user())->find($request->query('lead')) : null,
         ]);
     }
 

@@ -27,6 +27,9 @@ class SettingsController extends Controller
             'penalties' => RefundPenaltyRule::orderBy('from_days')->get(),
             'sequences' => IdSequence::pluck('prefix', 'type'),
             'holidays' => Holiday::orderBy('date')->get(),
+            'templates' => \App\Models\WhatsappTemplate::orderBy('name')->get(),
+            'stages' => \App\Models\LeadStage::orderBy('sort')->withCount(['leads' => fn ($q) => $q])->get(),
+            'salesUsers' => \App\Models\User::where('is_active', true)->whereHas('role', fn ($q) => $q->where('base_role', 'tenant_sales'))->orderBy('name')->pluck('name'),
             'tab' => $request->query('tab', 'organisation'),
         ]);
     }
@@ -146,6 +149,85 @@ class SettingsController extends Controller
         }
 
         return redirect()->route('ws.settings.index', ['tab' => 'ids'])->with('ok', 'ID prefixes saved. New records use them from now on.');
+    }
+
+    /** Listings & leads: default listing contact, contact modes, lead auto-assignment, watermark, workspace bot (spec 17.11). */
+    public function listings(Request $request)
+    {
+        $data = $request->validate([
+            'contact_name' => 'required|string|max:100',
+            'contact_mobile' => ['required', 'regex:/^[6-9]\d{9}$/'],
+            'contact_whatsapp' => ['nullable', 'regex:/^[6-9]\d{9}$/'],
+            'contact_email' => 'nullable|email|max:255',
+            'allow_call' => 'boolean', 'allow_whatsapp' => 'boolean', 'allow_email' => 'boolean',
+            'lead_auto_assign' => 'boolean', 'image_watermark' => 'boolean', 'workspace_bot_enabled' => 'boolean',
+        ], ['*.regex' => 'Enter a 10-digit mobile number.']);
+        foreach (['allow_call', 'allow_whatsapp', 'allow_email', 'lead_auto_assign', 'image_watermark', 'workspace_bot_enabled'] as $b) {
+            $data[$b] = $request->boolean($b);
+        }
+        if (! $data['allow_call'] && ! $data['allow_whatsapp'] && ! $data['allow_email']) {
+            return back()->withInput()->withErrors(['allow_call' => 'Choose at least one mode of contact.']);
+        }
+        $data['contact_whatsapp'] = $data['contact_whatsapp'] ?: $data['contact_mobile'];
+        app(Tenancy::class)->get()->setting()->update($data);
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'Listing and lead settings saved.');
+    }
+
+    public function storeTemplate(Request $request)
+    {
+        \App\Models\WhatsappTemplate::create($request->validate(['name' => 'required|string|max:60', 'body' => 'required|string|max:1000']));
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'WhatsApp template added.');
+    }
+
+    public function updateTemplate(Request $request, \App\Models\WhatsappTemplate $template)
+    {
+        $template->update($request->validate(['name' => 'required|string|max:60', 'body' => 'required|string|max:1000']));
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'Template saved.');
+    }
+
+    public function destroyTemplate(\App\Models\WhatsappTemplate $template)
+    {
+        $template->delete();
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'Template deleted.');
+    }
+
+    /** Lead pipeline stages: rename, reorder, add (Won and Lost stages always exist). */
+    public function stages(Request $request)
+    {
+        $data = $request->validate(['stages' => 'required|array', 'stages.*.name' => 'required|string|max:40', 'stages.*.sort' => 'required|integer|min:0|max:99',
+            'new_name' => 'nullable|string|max:40']);
+        foreach ($data['stages'] as $id => $row) {
+            \App\Models\LeadStage::whereKey($id)->update(['name' => $row['name'], 'sort' => $row['sort']]);
+        }
+        if (! empty($data['new_name'])) {
+            $key = \Illuminate\Support\Str::slug($data['new_name'], '_') ?: 'stage';
+            $base = $key;
+            $i = 2;
+            while (\App\Models\LeadStage::where('key', $key)->exists()) {
+                $key = $base.'_'.$i++;
+            }
+            $before = \App\Models\LeadStage::where('is_won', true)->value('sort') ?? 50;
+            \App\Models\LeadStage::create(['key' => $key, 'name' => $data['new_name'], 'sort' => max(0, $before - 1), 'color' => 'navy']);
+        }
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'Lead stages saved.');
+    }
+
+    public function destroyStage(\App\Models\LeadStage $stage)
+    {
+        if ($stage->is_won || $stage->is_lost || in_array($stage->key, ['new'], true)) {
+            return back()->with('error', 'The New, Won and Lost stages cannot be removed.');
+        }
+        if (\App\Models\Lead::where('lead_stage_id', $stage->id)->exists()) {
+            return back()->with('error', 'Move the leads out of this stage first.');
+        }
+        $stage->delete();
+
+        return redirect()->route('ws.settings.index', ['tab' => 'listings'])->with('ok', 'Stage removed.');
     }
 
     public function addHoliday(Request $request)

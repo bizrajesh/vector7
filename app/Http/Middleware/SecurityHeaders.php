@@ -24,12 +24,13 @@ class SecurityHeaders
 
         $csp = implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-$nonce'",
-            "style-src 'self'",
-            "img-src 'self' data: blob:",
+            // unpkg.com: Leaflet 1.9.4 (pinned, with SRI) for maps; OpenStreetMap tiles.
+            "script-src 'self' 'nonce-$nonce' https://unpkg.com",
+            "style-src 'self' https://unpkg.com",
+            "img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org https://i.ytimg.com",
             "font-src 'self'",
             "connect-src 'self'",
-            "frame-src 'none'",
+            "frame-src https://www.youtube-nocookie.com",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

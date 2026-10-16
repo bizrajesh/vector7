@@ -83,7 +83,14 @@ class AccountController extends Controller
     {
         $c = $request->user('customer');
 
-        return view('account.enquiries', $this->all(fn () => ['enquiries' => Enquiry::where(fn ($q) => $q->where('customer_id', $c->id)->orWhere('email', $c->email))->with('project')->latest('id')->get()]));
+        return view('account.enquiries', $this->all(fn () => [
+            'enquiries' => Enquiry::where(fn ($q) => $q->where('customer_id', $c->id)->orWhere('email', $c->email))->whereNull('tenant_id')->with('project')->latest('id')->get(),
+            // Leads the customer created with promoters (only the customer's own, across tenants).
+            'leads' => \App\Models\Lead::withoutGlobalScopes()->where(fn ($q) => $q->where('customer_id', $c->id)->orWhere('email', $c->email))
+                ->with(['tenant:id,name', 'stage' => fn ($q) => $q->withoutGlobalScopes(), 'interests' => fn ($q) => $q->withoutGlobalScopes()->with([
+                    'listing' => fn ($l) => $l->withoutGlobalScopes(), 'project' => fn ($p) => $p->withoutGlobalScopes(), 'plot' => fn ($p) => $p->withoutGlobalScopes()])])
+                ->latest('id')->get(),
+        ]));
     }
 
     public function requirements(Request $request)

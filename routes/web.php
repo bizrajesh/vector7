@@ -31,6 +31,7 @@ Route::get('/privacy', [Market\PageController::class, 'privacy'])->name('market.
 Route::get('/terms', [Market\PageController::class, 'terms'])->name('market.terms');
 Route::post('/enquiry', [Market\EnquiryController::class, 'store'])->middleware('throttle:enquiry')->name('market.enquiry');
 Route::match(['get', 'post'], '/find-a-plot', [Market\RequirementController::class, 'search'])->middleware('throttle:ai')->name('market.requirement');
+Route::get('/media/{image}/{size}', [Market\MediaController::class, 'image'])->whereNumber('image')->whereIn('size', ['full', 'thumb'])->name('market.image');
 Route::get('/sitemap.xml', [Market\SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [Market\SeoController::class, 'robots'])->name('robots');
 Route::get('/tenant-logo/{tenant}', [FileController::class, 'tenantLogo'])->name('files.public-logo');
@@ -106,6 +107,8 @@ Route::prefix('workspace')->group(function () {
 
 Route::middleware(['auth:web', 'auth.session', 'staff'])->group(function () {
     Route::get('/files/{file}', [FileController::class, 'show'])->name('files.show');
+    Route::get('/workspace/help', [\App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+    Route::get('/workspace/help/{slug}', [\App\Http\Controllers\HelpController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('help.show');
     Route::get('/profile', [Auth\ProfileController::class, 'show'])->name('profile');
     Route::put('/profile', [Auth\ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [Auth\ProfileController::class, 'password'])->name('profile.password');
@@ -156,6 +159,12 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
     Route::put('/settings/sales', [Tenant\SettingsController::class, 'sales'])->middleware('perm:tenant_settings.update')->name('settings.sales');
     Route::put('/settings/disclaimers', [Tenant\SettingsController::class, 'disclaimers'])->middleware('perm:tenant_settings.update')->name('settings.disclaimers');
     Route::put('/settings/ids', [Tenant\SettingsController::class, 'ids'])->middleware('perm:tenant_settings.update')->name('settings.ids');
+    Route::put('/settings/listings', [Tenant\SettingsController::class, 'listings'])->middleware('perm:tenant_settings.update')->name('settings.listings');
+    Route::post('/settings/whatsapp-templates', [Tenant\SettingsController::class, 'storeTemplate'])->middleware('perm:tenant_settings.update')->name('settings.templates.store');
+    Route::put('/settings/whatsapp-templates/{template}', [Tenant\SettingsController::class, 'updateTemplate'])->middleware('perm:tenant_settings.update')->name('settings.templates.update');
+    Route::delete('/settings/whatsapp-templates/{template}', [Tenant\SettingsController::class, 'destroyTemplate'])->middleware('perm:tenant_settings.update')->name('settings.templates.destroy');
+    Route::put('/settings/lead-stages', [Tenant\SettingsController::class, 'stages'])->middleware('perm:tenant_settings.update')->name('settings.stages');
+    Route::delete('/settings/lead-stages/{stage}', [Tenant\SettingsController::class, 'destroyStage'])->middleware('perm:tenant_settings.update')->name('settings.stages.destroy');
     Route::post('/settings/holidays', [Tenant\SettingsController::class, 'addHoliday'])->middleware('perm:tenant_settings.update')->name('settings.holidays.store');
     Route::delete('/settings/holidays/{holiday}', [Tenant\SettingsController::class, 'deleteHoliday'])->middleware('perm:tenant_settings.update')->name('settings.holidays.destroy');
     Route::get('/settings/plan', [Tenant\PlanController::class, 'show'])->middleware('perm:tenant_settings.view')->name('settings.plan');
@@ -198,6 +207,7 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
         Route::get('/launch/{project}', [Tenant\LaunchController::class, 'show'])->middleware('perm:launch.view')->name('launch.show');
         Route::post('/launch/{project}/layout', [Tenant\LaunchController::class, 'layout'])->middleware('perm:launch.update')->name('launch.layout');
         Route::post('/launch/{project}/details', [Tenant\LaunchController::class, 'details'])->middleware('perm:launch.update')->name('launch.details');
+        Route::post('/launch/{project}/marketplace', [Tenant\LaunchController::class, 'marketplace'])->middleware('perm:launch.update')->name('launch.marketplace');
         Route::post('/launch/{project}/ai-text', [Tenant\LaunchController::class, 'aiText'])->middleware(['perm:launch.update', 'throttle:ai'])->name('launch.ai-text');
         Route::post('/launch/{project}/gallery', [Tenant\LaunchController::class, 'gallery'])->middleware('perm:launch.update')->name('launch.gallery');
         Route::delete('/launch/{project}/gallery/{file}', [Tenant\LaunchController::class, 'removeImage'])->middleware('perm:launch.update')->name('launch.gallery.remove');
@@ -211,6 +221,37 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
         Route::delete('/launch/{project}/plots/{plot}', [Tenant\PlotController::class, 'destroy'])->middleware('perm:launch.delete')->name('plots.destroy');
         Route::post('/launch/{project}/plots/{plot}/pin', [Tenant\PlotController::class, 'pin'])->middleware('perm:launch.update')->name('plots.pin');
     });
+
+    // Quick launch layout (spec 17.1) — Admin / Manager; Sales and Support read-only
+    Route::middleware('module:launch')->group(function () {
+        Route::get('/quick-launch', [Tenant\QuickLaunchController::class, 'create'])->middleware('perm:quick_launch.create')->name('quick-launch.create');
+        Route::post('/quick-launch', [Tenant\QuickLaunchController::class, 'store'])->middleware('perm:quick_launch.create')->name('quick-launch.store');
+        Route::post('/projects/{project}/convert', [Tenant\QuickLaunchController::class, 'convert'])->middleware('perm:quick_launch.update')->name('quick-launch.convert');
+    });
+
+    // Property listings (spec 17.2)
+    Route::get('/listings', [Tenant\ListingController::class, 'index'])->middleware('perm:listings.view')->name('listings.index');
+    Route::get('/listings/create', [Tenant\ListingController::class, 'create'])->middleware('perm:listings.create')->name('listings.create');
+    Route::post('/listings', [Tenant\ListingController::class, 'store'])->middleware('perm:listings.create')->name('listings.store');
+    Route::get('/listings/{listing}', [Tenant\ListingController::class, 'show'])->middleware('perm:listings.view')->name('listings.show');
+    Route::get('/listings/{listing}/edit', [Tenant\ListingController::class, 'edit'])->middleware('perm:listings.update')->name('listings.edit');
+    Route::put('/listings/{listing}', [Tenant\ListingController::class, 'update'])->middleware('perm:listings.update')->name('listings.update');
+    Route::post('/listings/{listing}/status', [Tenant\ListingController::class, 'status'])->middleware('perm:listings.update')->name('listings.status');
+    Route::delete('/listings/{listing}', [Tenant\ListingController::class, 'destroy'])->middleware('perm:listings.delete')->name('listings.destroy');
+
+    // Photos, brochure and video for listings and layouts (spec 17.3); permission checked per kind in the controller
+    Route::prefix('/media/{kind}/{id}')->whereIn('kind', ['listing', 'project'])->whereNumber('id')->name('media.')->group(function () {
+        Route::post('/images', [Tenant\MediaController::class, 'upload'])->name('upload');
+        Route::post('/order', [Tenant\MediaController::class, 'order'])->name('order');
+        Route::post('/images/{image}/cover', [Tenant\MediaController::class, 'cover'])->whereNumber('image')->name('cover');
+        Route::put('/images/{image}', [Tenant\MediaController::class, 'caption'])->whereNumber('image')->name('caption');
+        Route::delete('/images/{image}', [Tenant\MediaController::class, 'destroy'])->whereNumber('image')->name('destroy');
+        Route::post('/brochure', [Tenant\MediaController::class, 'brochure'])->name('brochure');
+        Route::delete('/brochure', [Tenant\MediaController::class, 'removeBrochure'])->name('brochure.destroy');
+        Route::put('/youtube', [Tenant\MediaController::class, 'youtube'])->name('youtube');
+        Route::post('/ai-check', [Tenant\MediaController::class, 'aiCheck'])->middleware('throttle:ai')->name('ai-check');
+    });
+    Route::post('/ai/write', [Tenant\AiWriteController::class, 'write'])->middleware(['perm:listings.view', 'throttle:ai'])->name('ai.write');
 
     // Bookings & sales
     Route::middleware('module:bookings')->group(function () {
@@ -280,9 +321,29 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
         Route::put('/promotions/codes/{code}', [Tenant\PromoController::class, 'updateCode'])->middleware('perm:promos.update')->name('promos.codes.update');
     });
 
-    // Enquiries & tickets
-    Route::get('/enquiries', [Tenant\EnquiryController::class, 'index'])->middleware('perm:enquiries.view')->name('enquiries.index');
-    Route::put('/enquiries/{enquiry}', [Tenant\EnquiryController::class, 'update'])->middleware('perm:enquiries.update')->name('enquiries.update');
+    // Leads (promoter CRM, spec 17.6) — replaces the old Enquiries list
+    Route::permanentRedirect('/enquiries', '/workspace/leads')->name('enquiries.index');
+    Route::middleware('module:leads')->group(function () {
+        Route::get('/leads', [Tenant\LeadController::class, 'index'])->middleware('perm:leads.view')->name('leads.index');
+        Route::post('/leads', [Tenant\LeadController::class, 'store'])->middleware('perm:leads.create')->name('leads.store');
+        Route::get('/leads/reports', [Tenant\LeadController::class, 'reports'])->middleware('perm:leads.view')->name('leads.reports');
+        Route::get('/leads/{lead}', [Tenant\LeadController::class, 'show'])->middleware('perm:leads.view')->name('leads.show');
+        Route::put('/leads/{lead}', [Tenant\LeadController::class, 'update'])->middleware('perm:leads.update')->name('leads.update');
+        Route::post('/leads/{lead}/stage', [Tenant\LeadController::class, 'stage'])->middleware('perm:leads.update')->name('leads.stage');
+        Route::post('/leads/{lead}/assign', [Tenant\LeadController::class, 'assign'])->middleware('perm:leads.update')->name('leads.assign');
+        Route::post('/leads/{lead}/activity', [Tenant\LeadController::class, 'activity'])->middleware('perm:leads.update')->name('leads.activity');
+        Route::get('/leads/{lead}/call', [Tenant\LeadController::class, 'call'])->middleware('perm:leads.update')->name('leads.call');
+        Route::get('/leads/{lead}/whatsapp', [Tenant\LeadController::class, 'whatsapp'])->middleware('perm:leads.update')->name('leads.whatsapp');
+        Route::post('/leads/{lead}/email', [Tenant\LeadController::class, 'email'])->middleware('perm:leads.update')->name('leads.email');
+        Route::post('/leads/{lead}/followups', [Tenant\LeadController::class, 'followup'])->middleware('perm:leads.update')->name('leads.followup');
+        Route::post('/leads/{lead}/followups/{followup}/done', [Tenant\LeadController::class, 'followupDone'])->middleware('perm:leads.update')->name('leads.followup.done');
+        Route::post('/leads/{lead}/interests', [Tenant\LeadController::class, 'interest'])->middleware('perm:leads.update')->name('leads.interest');
+        Route::get('/leads/{lead}/convert', [Tenant\LeadController::class, 'convert'])->middleware('perm:leads.update')->name('leads.convert');
+        Route::post('/leads/{lead}/ai/{action}', [Tenant\LeadController::class, 'ai'])->middleware(['perm:leads.update', 'throttle:ai'])->name('leads.ai');
+        Route::delete('/leads/{lead}', [Tenant\LeadController::class, 'destroy'])->middleware('perm:leads.delete')->name('leads.destroy');
+    });
+
+    // Help desk tickets
     Route::get('/tickets', [Tenant\TicketController::class, 'index'])->middleware('perm:tickets.view')->name('tickets.index');
     Route::post('/tickets', [Tenant\TicketController::class, 'store'])->middleware('perm:tickets.create')->name('tickets.store');
     Route::get('/tickets/{ticket}', [Tenant\TicketController::class, 'show'])->middleware('perm:tickets.view')->name('tickets.show');
@@ -348,6 +409,16 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::get('/tickets/{ticket}', [App\TicketController::class, 'show'])->middleware('perm:helpdesk.view')->name('tickets.show');
     Route::put('/tickets/{ticket}', [App\TicketController::class, 'update'])->middleware('perm:helpdesk.update')->name('tickets.update');
     Route::post('/tickets/{ticket}/reply', [App\TicketController::class, 'reply'])->middleware('perm:helpdesk.update')->name('tickets.reply');
+
+    Route::get('/listings', [App\ListingModerationController::class, 'index'])->middleware('perm:app_listings.view')->name('listings.index');
+    Route::post('/listings/{listing}/hide', [App\ListingModerationController::class, 'hide'])->middleware('perm:app_listings.update')->name('listings.hide');
+    Route::post('/listings/{listing}/unhide', [App\ListingModerationController::class, 'unhide'])->middleware('perm:app_listings.update')->name('listings.unhide');
+    Route::post('/featured/{kind}/{id}', [App\ListingModerationController::class, 'feature'])->middleware('perm:app_listings.update')->whereIn('kind', ['listing', 'project'])->whereNumber('id')->name('listings.feature');
+    Route::post('/listing-reports/{report}', [App\ListingModerationController::class, 'resolve'])->middleware('perm:app_listings.update')->name('listings.reports.resolve');
+    Route::post('/testimonials', [App\ListingModerationController::class, 'storeTestimonial'])->middleware('perm:app_listings.create')->name('testimonials.store');
+    Route::post('/testimonials/{testimonial}', [App\ListingModerationController::class, 'testimonial'])->middleware('perm:app_listings.update')->name('testimonials.update');
+    Route::get('/chats', [App\ChatLogController::class, 'index'])->middleware('perm:app_chats.view')->name('chats.index');
+    Route::get('/chats/{conversation}', [App\ChatLogController::class, 'show'])->middleware('perm:app_chats.view')->name('chats.show');
 
     Route::get('/marketing', [App\MarketingController::class, 'index'])->middleware('perm:marketing.view')->name('marketing.index');
     Route::post('/marketing/generate', [App\MarketingController::class, 'generate'])->middleware(['perm:marketing.create', 'throttle:ai'])->name('marketing.generate');

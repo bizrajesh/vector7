@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
  * Tenant ID seeds (spec 7.3.8): prefix set by the tenant, rest from the clock.
  *   project, user        → prefix + DDMMYYYYmm   (mm = minutes)
  *   booking, sale,
- *   expense, income      → prefix + DDMMYYYYmmss
+ *   expense, income, lead → prefix + DDMMYYYYmmss
+ *   listing              → prefix + DDMMYYYYmm   (e.g. L0910202612)
  * Generated inside a transaction; on clash a suffix -2, -3 … is added.
  */
 class IdGenerator
@@ -21,6 +22,8 @@ class IdGenerator
         'sale' => ['label' => 'Sale ID', 'format' => 'dmYis', 'default' => 'SAL', 'table' => 'sales', 'column' => 'sale_no'],
         'expense' => ['label' => 'Expense transaction ID', 'format' => 'dmYis', 'default' => 'EXP', 'table' => 'expenses', 'column' => 'transaction_no'],
         'income' => ['label' => 'Income transaction ID', 'format' => 'dmYis', 'default' => 'INC', 'table' => 'payments', 'column' => 'transaction_no'],
+        'listing' => ['label' => 'Listing ID', 'format' => 'dmYi', 'default' => 'L', 'table' => 'listings', 'column' => 'listing_code'],
+        'lead' => ['label' => 'Lead ID', 'format' => 'dmYis', 'default' => 'LD', 'table' => 'leads', 'column' => 'lead_code'],
     ];
 
     public static function prefix(int $tenantId, string $type): string

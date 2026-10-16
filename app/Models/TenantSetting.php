@@ -17,4 +17,12 @@ class TenantSetting extends Model
     use BelongsToTenant, Auditable;
 
     protected $guarded = ['id'];
+
+    protected function casts(): array
+    {
+        return [
+            'allow_call' => 'boolean', 'allow_whatsapp' => 'boolean', 'allow_email' => 'boolean', 'lead_auto_assign' => 'boolean',
+            'image_watermark' => 'boolean', 'workspace_bot_enabled' => 'boolean',
+        ];
+    }
 }

@@ -106,6 +106,41 @@ class SeoService
         return 1;
     }
 
+    public static function listingDefaults(\App\Models\Listing $l): array
+    {
+        $specs = implode(', ', $l->specs());
+
+        return [
+            'title' => $l->title.' – '.$l->city,
+            'description' => $l->typeLabel().' '.($l->purpose === 'rent' ? 'for rent' : 'for sale').' in '.$l->location().($specs ? ". $specs" : '').'. '
+                .Format::inr($l->currentPrice()).$l->priceSuffix().($l->offerIsActive() ? ' (offer till '.$l->offer_valid_till->format('d-m-Y').')' : '').'. Contact the owner on vector7.',
+        ];
+    }
+
+    /** Regenerate meta for one listing (manual edits are kept). */
+    public static function refreshListing(\App\Models\Listing $l, bool $ai = false): int
+    {
+        $d = self::listingDefaults($l);
+        if ($ai && ClaudeClient::available()) {
+            try {
+                $j = ClaudeClient::json(ClaudeClient::ask('seo_meta', "Write an SEO title (max 60 characters) and meta description (max 155 characters) for this Indian property listing page. Return JSON {\"title\":…,\"description\":…}.\nFacts: {$d['title']}. {$d['description']}", null, [], 300));
+                if (is_array($j) && ! empty($j['title']) && ! empty($j['description'])) {
+                    $d = ['title' => (string) $j['title'], 'description' => (string) $j['description']];
+                }
+            } catch (\Throwable) {
+                // keep the generated defaults
+            }
+        }
+        $m = SeoMeta::firstOrNew(['page_type' => 'listing', 'page_key' => $l->slug]);
+        if ($m->is_manual) {
+            return 0;
+        }
+        $m->fill(['title' => self::title($d['title']), 'description' => self::description($d['description'])])->save();
+        Cache::forget('sitemap.xml');
+
+        return 1;
+    }
+
     /** php artisan seo:build */
     public static function buildAll(bool $ai = false): array
     {
@@ -113,6 +148,10 @@ class SeoService
         $projects = app(Tenancy::class)->withoutScope(fn () => Project::launched()->with('plots')->get());
         foreach ($projects as $p) {
             $count += self::refreshProject($p, $ai);
+        }
+        $listings = app(Tenancy::class)->withoutScope(fn () => \App\Models\Listing::live()->with('featureRows.master')->get());
+        foreach ($listings as $l) {
+            $count += self::refreshListing($l, $ai);
         }
         foreach (['home' => ['vector7 – Approved residential plots', AppSettings::get('seo.default_description')],
             'projects' => ['Approved plot layouts for sale', 'Search DTCP and panchayat approved residential plots by location, budget and size. Live availability and offers.'],

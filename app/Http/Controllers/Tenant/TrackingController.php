@@ -15,6 +15,7 @@ class TrackingController extends Controller
 {
     public function show(Request $request, Project $project)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         $project->load(['stages.subtasks.documents.file']);
         $filter = $request->query('filter');
 
@@ -29,6 +30,7 @@ class TrackingController extends Controller
 
     public function update(Request $request, Project $project, ProjectSubtask $subtask)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         abort_unless($subtask->project_id === $project->id, 404);
         $data = $request->validate([
             'status' => 'required|in:not_started,in_progress,blocked,done',
@@ -49,6 +51,7 @@ class TrackingController extends Controller
 
     public function upload(Request $request, Project $project, ProjectDocument $document)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         abort_unless($document->project_id === $project->id, 404);
         abort_if($project->isReadOnly(), 403);
         $request->validate(['file' => FileStore::rules('document', 20480)]);
@@ -64,6 +67,7 @@ class TrackingController extends Controller
 
     public function ready(Project $project)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         try {
             ProjectService::markReady($project);
         } catch (\Illuminate\Validation\ValidationException $e) {

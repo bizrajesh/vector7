@@ -15,6 +15,7 @@ class EstimateController extends Controller
 {
     public function edit(Request $request, Project $project)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         abort_if($project->isReadOnly(), 403, 'Closed projects are read-only.');
         if ($project->status === 'draft' && $request->user()->hasPerm('estimates.update')) {
             ProjectService::setStatus($project, 'init', 'Estimate started.');
@@ -39,6 +40,7 @@ class EstimateController extends Controller
 
     public function save(Request $request, Project $project)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         abort_if($project->isReadOnly(), 403);
         $data = $request->validate([
             'tier' => 'required|in:Basic,Standard,Premium',
@@ -68,6 +70,7 @@ class EstimateController extends Controller
 
     public function export(Project $project, string $format)
     {
+        abort_if($project->isDirect(), 404, 'Direct-launch layouts have no estimate or tracking. Convert the layout to a full project first.');
         $estimate = $project->estimate()->with('lines')->firstOrFail();
         $name = 'estimate-'.$project->project_code;
         if ($format === 'pdf') {

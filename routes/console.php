@@ -72,6 +72,9 @@ Artisan::command('v7:app-admin {email? : Defaults to APP_ADMIN_EMAIL} {--passwor
 
 Artisan::command('seo:build {--ai : Write titles/descriptions with Claude}', fn () => $this->info(json_encode(SeoService::buildAll((bool) $this->option('ai')))))->purpose('Generate/refresh meta titles, descriptions, JSON-LD data and the sitemap');
 
+Artisan::command('v7:lead-reminders', fn () => $this->info(json_encode(\App\Services\LeadReminders::morning())))->purpose('9:00 lead follow-up emails per user and the daily leads summary');
+Artisan::command('v7:lead-soon', fn () => $this->info(\App\Services\LeadReminders::soon().' reminder(s) sent'))->purpose('Reminders 15 minutes before scheduled lead follow-ups');
+
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')->everyMinute()->withoutOverlapping()->runInBackground();
 Schedule::command('v7:bookings')->hourly()->withoutOverlapping();
 Schedule::command('v7:offers')->dailyAt('00:05');
@@ -81,5 +84,7 @@ Schedule::command('v7:storage')->dailyAt('01:30');
 Schedule::command('v7:social')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('v7:social-metrics')->dailyAt('05:00');
 Schedule::command('v7:requirements')->dailyAt('09:00');
+Schedule::command('v7:lead-reminders')->dailyAt('09:00');
+Schedule::command('v7:lead-soon')->everyMinute()->withoutOverlapping();
 Schedule::command('seo:build')->dailyAt('03:00');
 Schedule::command('v7:backup')->dailyAt('02:00')->withoutOverlapping();

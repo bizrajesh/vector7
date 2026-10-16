@@ -3,7 +3,7 @@
         <a href="{{ route('ws.settings.plan') }}" class="btn-light"><x-icon name="chart" class="h-4 w-4" /> My plan & usage</a>
         @can('masters.export')<a href="{{ route('ws.template.export') }}" class="btn-light"><x-icon name="download" class="h-4 w-4" /> Export setup (template)</a>@endcan
     </x-page-header>
-    @php($tabs = ['organisation' => 'Organisation', 'sales' => 'Booking, sales & refunds', 'disclaimers' => 'Disclaimers', 'ids' => 'ID seeds', 'calendar' => 'Working days'])
+    @php($tabs = ['organisation' => 'Organisation', 'sales' => 'Booking, sales & refunds', 'disclaimers' => 'Disclaimers', 'listings' => 'Listings & leads', 'ids' => 'ID seeds', 'calendar' => 'Working days'])
     <nav class="tabs mb-6">@foreach ($tabs as $k => $l)<a href="{{ route('ws.settings.index', ['tab' => $k]) }}" class="tab {{ $tab === $k ? 'active' : '' }}">{{ $l }}</a>@endforeach</nav>
     @php($ro = ! auth()->user()->hasPerm('tenant_settings.update'))
 
@@ -107,6 +107,8 @@
             <x-textarea name="disclaimer_refund" label="Refund disclaimer" :value="$settings->disclaimer_refund" rows="4" required />
             @unless ($ro)<button class="btn-primary">Save disclaimers</button>@endunless
         </form>
+    @elseif ($tab === 'listings')
+        @include('ws.settings.listings')
     @elseif ($tab === 'ids')
         <form method="POST" action="{{ route('ws.settings.ids') }}" class="card card-pad">
             @csrf @method('PUT')

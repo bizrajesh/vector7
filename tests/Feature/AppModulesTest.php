@@ -81,13 +81,15 @@ class AppModulesTest extends TestCase
         $this->actingAs($this->appAdmin())->put(route('app.enquiries.update', $e), ['assigned_team' => 'tenant', 'tenant_id' => $tenant->id, 'status' => 'new'])->assertSessionHasNoErrors();
         $this->assertSame($tenant->id, $e->fresh()->tenant_id);
 
-        $this->actingAs($admin)->get(route('ws.enquiries.index'))->assertOk()->assertSee('Hari');
-        $this->actingAs($admin)->put(route('ws.enquiries.update', $e), ['status' => 'converted'])->assertSessionHasErrors('booking_no');
-        $this->actingAs($admin)->put(route('ws.enquiries.update', $e), ['status' => 'contacted', 'follow_up_on' => today()->toDateString()])->assertSessionHasNoErrors();
-        $this->assertSame('contacted', $e->fresh()->status);
+        // Assigned enquiries become leads in the promoter's Leads CRM (spec 17.6).
+        $lead = \App\Models\Lead::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('email', 'hari@example.com')->first();
+        $this->assertNotNull($lead);
+        $this->assertSame('enquiry', $lead->source);
+        $this->actingAs($admin)->get(route('ws.leads.index', ['view' => 'list']))->assertOk()->assertSee('Hari');
+        $this->actingAs($admin)->get(route('ws.enquiries.index'))->assertRedirect(route('ws.leads.index'));
 
         [, $other] = $this->makeTenant('Enq Other');
-        $this->actingAs($other)->put(route('ws.enquiries.update', $e), ['status' => 'closed'])->assertNotFound();
+        $this->actingAs($other)->get(route('ws.leads.show', $lead))->assertNotFound();
     }
 
     public function test_tenant_sees_only_associated_customers(): void

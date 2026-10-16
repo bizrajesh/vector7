@@ -184,44 +184,74 @@ class ProjectService
         }
         DB::transaction(function () use ($project, $startDate, $endOverride) {
             $wd = WorkingDays::for($project->tenant_id);
-            $masters = self::stageMasters($project);
-            $graph = self::masterTaskGraph($project);
-            $cp = self::criticalPath($graph);
-            $estimate = $project->estimate;
-            $stageBudgets = $estimate ? $estimate->lines->where('line_type', 'stage')->pluck('amount', 'stage_no')->map(fn ($v) => (float) $v)->all() : [];
-
-            foreach ($masters as $sm) {
-                $stage = ProjectStage::create([
-                    'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'stage_no' => $sm->stage_no, 'name' => $sm->name,
-                    'budget' => $stageBudgets[$sm->stage_no] ?? (float) $sm->default_cost + (float) $sm->subtasks->sum('default_cost'),
-                ]);
-                $totalDur = max(1, $sm->subtasks->sum('default_duration_days'));
-                $minStart = null;
-                $maxEnd = null;
-                foreach ($sm->subtasks as $t) {
-                    $ps = $wd->add($startDate, $cp['es'][$t->task_code] ?? 0);
-                    $pe = $wd->add($startDate, $cp['ef'][$t->task_code] ?? 0);
-                    $budget = (float) $t->default_cost > 0 ? (float) $t->default_cost : round($stage->budget * max(1, $t->default_duration_days) / $totalDur, 2);
-                    $sub = ProjectSubtask::create([
-                        'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'project_stage_id' => $stage->id,
-                        'task_code' => $t->task_code, 'short_name' => $t->short_name, 'name' => $t->name, 'responsible' => $t->responsible,
-                        'duration_days' => $t->default_duration_days, 'depends_on' => $t->dependencies->pluck('task_code')->values()->all(),
-                        'planned_start' => $ps, 'planned_end' => $pe, 'budget' => $budget,
-                    ]);
-                    foreach ($t->documents as $doc) {
-                        ProjectDocument::create([
-                            'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'project_subtask_id' => $sub->id,
-                            'doc_code' => $doc->doc_code, 'name' => $doc->name, 'is_mandatory' => $doc->mandatory === 'Yes',
-                        ]);
-                    }
-                    $minStart = $minStart ? min($minStart, $ps) : $ps;
-                    $maxEnd = $maxEnd ? max($maxEnd, $pe) : $pe;
-                }
-                $stage->update(['planned_start' => $minStart, 'planned_end' => $maxEnd]);
-            }
+            $cp = self::buildSchedule($project, $startDate);
             $estEnd = $endOverride ?? $wd->add($startDate, $cp['total']);
             $project->update(['start_date' => $startDate, 'est_end_date' => $estEnd]);
             self::setStatus($project, 'in_progress', 'Project started on '.Format::date($startDate).'; estimated end '.Format::date($estEnd).'.');
+        });
+    }
+
+    /** Create stages, sub-tasks and document slots from the masters, scheduled in working days from $startDate. Returns the critical path. */
+    private static function buildSchedule(Project $project, Carbon $startDate): array
+    {
+        $wd = WorkingDays::for($project->tenant_id);
+        $masters = self::stageMasters($project);
+        $graph = self::masterTaskGraph($project);
+        $cp = self::criticalPath($graph);
+        $estimate = $project->estimate;
+        $stageBudgets = $estimate ? $estimate->lines->where('line_type', 'stage')->pluck('amount', 'stage_no')->map(fn ($v) => (float) $v)->all() : [];
+
+        foreach ($masters as $sm) {
+            $stage = ProjectStage::create([
+                'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'stage_no' => $sm->stage_no, 'name' => $sm->name,
+                'budget' => $stageBudgets[$sm->stage_no] ?? (float) $sm->default_cost + (float) $sm->subtasks->sum('default_cost'),
+            ]);
+            $totalDur = max(1, $sm->subtasks->sum('default_duration_days'));
+            $minStart = null;
+            $maxEnd = null;
+            foreach ($sm->subtasks as $t) {
+                $ps = $wd->add($startDate, $cp['es'][$t->task_code] ?? 0);
+                $pe = $wd->add($startDate, $cp['ef'][$t->task_code] ?? 0);
+                $budget = (float) $t->default_cost > 0 ? (float) $t->default_cost : round($stage->budget * max(1, $t->default_duration_days) / $totalDur, 2);
+                $sub = ProjectSubtask::create([
+                    'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'project_stage_id' => $stage->id,
+                    'task_code' => $t->task_code, 'short_name' => $t->short_name, 'name' => $t->name, 'responsible' => $t->responsible,
+                    'duration_days' => $t->default_duration_days, 'depends_on' => $t->dependencies->pluck('task_code')->values()->all(),
+                    'planned_start' => $ps, 'planned_end' => $pe, 'budget' => $budget,
+                ]);
+                foreach ($t->documents as $doc) {
+                    ProjectDocument::create([
+                        'tenant_id' => $project->tenant_id, 'project_id' => $project->id, 'project_subtask_id' => $sub->id,
+                        'doc_code' => $doc->doc_code, 'name' => $doc->name, 'is_mandatory' => $doc->mandatory === 'Yes',
+                    ]);
+                }
+                $minStart = $minStart ? min($minStart, $ps) : $ps;
+                $maxEnd = $maxEnd ? max($maxEnd, $pe) : $pe;
+            }
+            $stage->update(['planned_start' => $minStart, 'planned_end' => $maxEnd]);
+        }
+
+        return $cp;
+    }
+
+    /**
+     * Convert a direct-launch layout into a full project (spec 17.1): stages and sub-tasks are created from today
+     * so tracking can start; status stays Launched and plots, bookings and sales are untouched.
+     */
+    public static function startTracking(Project $project, int $userId): void
+    {
+        if (! $project->isDirect()) {
+            throw ValidationException::withMessages(['project' => 'Only a direct-launch layout can be converted.']);
+        }
+        DB::transaction(function () use ($project, $userId) {
+            $start = today()->isWeekend() ? today()->next(Carbon::MONDAY) : today();
+            $cp = $project->stages()->exists() ? null : self::buildSchedule($project, $start);
+            $project->update([
+                'launch_mode' => 'full', 'decision' => 'go', 'decision_on' => today(), 'decision_by' => $userId,
+                'decision_notes' => 'Converted from a direct launch.', 'start_date' => $project->start_date ?? $start,
+                'est_end_date' => $cp ? WorkingDays::for($project->tenant_id)->add($start, $cp['total']) : $project->est_end_date,
+            ]);
+            self::recalc($project->fresh());
         });
     }
 
@@ -231,7 +261,8 @@ class ProjectService
     public static function updateSubtask(ProjectSubtask $sub, array $data, int $userId): void
     {
         $project = $sub->project;
-        if ($project->status !== 'in_progress') {
+        // Converted direct-launch layouts keep tracking open while Launched.
+        if ($project->status !== 'in_progress' && ! ($project->status === 'launched' && $project->stages()->exists())) {
             throw ValidationException::withMessages(['status' => 'Tracking is only open while the project is In Progress.']);
         }
         if (($data['status'] ?? $sub->status) === 'done') {

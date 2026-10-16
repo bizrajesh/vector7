@@ -22,9 +22,10 @@
                 <p class="hint">Only customers who already deal with your workspace are listed.</p>
             </div>
             <p class="text-sm font-semibold text-muted">— or register a new customer —</p>
-            <x-field name="new_name" label="Full name" />
-            <x-field name="new_email" type="email" label="Email" hint="If this email already has a vector7 account, the booking is added to it." />
-            <x-field name="new_mobile" label="Mobile" inputmode="numeric" maxlength="10" />
+            @if ($lead)<p class="rounded-lg bg-teal-50 p-3 text-sm text-teal-900">Pre-filled from lead <a href="{{ route('ws.leads.show', $lead) }}">{{ $lead->lead_code }}</a>. The lead is marked Won when the booking is saved.</p>@endif
+            <x-field name="new_name" label="Full name" :value="$lead?->name" />
+            <x-field name="new_email" type="email" label="Email" :value="$lead?->email" hint="If this email already has a vector7 account, the booking is added to it." />
+            <x-field name="new_mobile" label="Mobile" inputmode="numeric" maxlength="10" :value="$lead?->mobile" />
         </div>
         <div class="card card-pad space-y-3 lg:col-span-2">
             <h2 class="section-title">Booking disclaimer</h2>

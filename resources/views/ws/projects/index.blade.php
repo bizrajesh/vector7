@@ -1,6 +1,7 @@
 <x-layouts.workspace title="Projects">
     <x-page-header title="Projects" subtitle="Draft → Init → Go / No-Go → In Progress → Ready to Launch → Launched">
         @can('projects.export')<x-export-buttons />@endcan
+        @can('quick_launch.create')<a href="{{ route('ws.quick-launch.create') }}" class="btn-light"><x-icon name="rocket" class="h-4 w-4" /> Quick launch layout</a>@endcan
         @can('projects.create')<a href="{{ route('ws.projects.create') }}" class="btn-primary"><x-icon name="plus" class="h-4 w-4" /> New project</a>@endcan
     </x-page-header>
     <div class="mb-4 flex flex-wrap gap-2">
@@ -19,7 +20,7 @@
         @forelse ($projects as $p)
             <a href="{{ route('ws.projects.show', $p) }}" class="card card-pad block text-navy no-underline transition hover:-translate-y-0.5 hover:shadow-lift">
                 <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0"><p class="truncate text-lg font-extrabold">{{ $p->name }}</p><p class="text-xs text-muted">{{ $p->project_code }} · {{ $p->approval_type }} · {{ $p->location }}</p></div>
+                    <div class="min-w-0"><p class="truncate text-lg font-extrabold">{{ $p->name }}</p><p class="text-xs text-muted">{{ $p->project_code }} · {{ $p->approval_type }} · {{ $p->location }}</p>@if ($p->isDirect())<span class="badge-purple mt-1">Direct launch</span>@endif</div>
                     <x-project-status :status="$p->status" />
                 </div>
                 <div class="mt-4 flex items-center gap-2"><x-progress :pct="$p->progress_pct" level="teal" class="flex-1" label="Progress" /><span class="text-xs font-semibold">{{ (float) $p->progress_pct }}%</span></div>

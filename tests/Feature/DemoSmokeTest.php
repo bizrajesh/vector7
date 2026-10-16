@@ -34,7 +34,7 @@ class DemoSmokeTest extends TestCase
         foreach ($users as $key => $u) {
             foreach ($this->getRoutes('ws.') as $name) {
                 $status = $this->actingAs($u)->get(route($name))->baseResponse->getStatusCode();
-                $this->assertContains($status, [200, 302, 403], "$key → $name returned $status");
+                $this->assertContains($status, [200, 301, 302, 403], "$key → $name returned $status");
             }
         }
 

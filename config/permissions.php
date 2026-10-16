@@ -42,6 +42,8 @@ $appModules = [
     'prerequisites' => 'Prerequisite masters',
     'seo' => 'SEO settings',
     'audit' => 'Audit log',
+    'app_listings' => 'Listings moderation',
+    'app_chats' => 'Chatbot conversations',
 ];
 
 $tenantModules = [
@@ -61,7 +63,10 @@ $tenantModules = [
     'accounts' => 'Accounts',
     'reports' => 'Reports',
     'promos' => 'Social posts & promo codes',
-    'enquiries' => 'Enquiries',
+    'listings' => 'Property listings',
+    'quick_launch' => 'Quick launch layout',
+    'leads' => 'Leads & enquiries',
+    'workspace_bot' => 'Workspace assistant (AI)',
     'tickets' => 'Help desk tickets',
 ];
 
@@ -82,6 +87,7 @@ return [
         'accounts' => 'Accounts',
         'reports' => 'Reports',
         'promos' => 'Social posts & promo codes',
+        'leads' => 'Leads CRM',
         'ai' => 'AI features',
     ],
 
@@ -98,8 +104,8 @@ return [
     'roles' => [
         'app_admin' => $grant(array_fill_keys(array_keys($appModules), $all)),
 
-        // Every App module except IAM and Settings
-        'app_manager' => $grant(array_fill_keys(array_diff(array_keys($appModules), ['app_iam', 'app_settings', 'audit']), $all)),
+        // Every App module except IAM and Settings (chatbot conversation logs are App Admin only)
+        'app_manager' => $grant(array_fill_keys(array_diff(array_keys($appModules), ['app_iam', 'app_settings', 'audit', 'app_chats']), $all)),
 
         'tenant_admin' => $grant(array_fill_keys(array_keys($tenantModules), $all)),
 
@@ -118,7 +124,10 @@ return [
             'accounts' => $ro,
             'reports' => $ro,
             'promos' => $crud,
-            'enquiries' => $ro,
+            'listings' => $crud,
+            'quick_launch' => $cru,
+            'leads' => $crud,
+            'workspace_bot' => ['view'],
             'tickets' => ['view', 'create'],
         ]),
 
@@ -132,7 +141,10 @@ return [
             'registration' => $cru,
             'tenant_customers' => ['view', 'create', 'export'],
             'accounts' => ['view', 'create'],
-            'enquiries' => $cru,
+            'listings' => ['view'],
+            'quick_launch' => ['view'],
+            'leads' => $cru,
+            'workspace_bot' => ['view'],
             'tickets' => ['view', 'create'],
         ]),
 
@@ -143,6 +155,7 @@ return [
             'refunds' => ['view'],
             'accounts' => $crud,
             'reports' => $ro,
+            'workspace_bot' => ['view'],
             'tickets' => ['view', 'create'],
         ]),
 
@@ -153,7 +166,10 @@ return [
             'launch' => ['view'],
             'bookings' => ['view'],
             'tenant_customers' => ['view'],
-            'enquiries' => $cru,
+            'listings' => ['view'],
+            'quick_launch' => ['view'],
+            'leads' => ['view', 'create', 'update'],
+            'workspace_bot' => ['view'],
             'tickets' => $cru,
         ]),
     ],

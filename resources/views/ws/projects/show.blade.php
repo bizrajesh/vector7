@@ -3,11 +3,17 @@
     @php($u = auth()->user())
     <x-page-header :title="$project->name" :subtitle="$project->project_code.' · '.$project->approval_type.' approval · '.$project->location.', '.$project->district" :back="route('ws.projects.index')">
         @if (! $project->isReadOnly() && $u->hasPerm('projects.update'))<a href="{{ route('ws.projects.edit', $project) }}" class="btn-light"><x-icon name="edit" class="h-4 w-4" /> Edit</a>@endif
-        @if ($u->hasPerm('estimates.view') && \App\Services\PlanLimiter::moduleEnabled($project->tenantRel, 'estimates'))<a href="{{ route('ws.estimate.edit', $project) }}" class="btn-light"><x-icon name="rupee" class="h-4 w-4" /> Estimate</a>@endif
-        @if ($project->stages->isNotEmpty() && $u->hasPerm('tracking.view'))<a href="{{ route('ws.tracking.show', $project) }}" class="btn-primary"><x-icon name="clipboard" class="h-4 w-4" /> Tracking</a>@endif
+        @if ($project->isDirect())<span class="badge-purple">Direct launch</span>@endif
+        @if ($project->status === 'launched' && $u->hasPerm('launch.view'))<a href="{{ route('ws.launch.show', $project) }}" class="btn-light"><x-icon name="rocket" class="h-4 w-4" /> Plots & media</a>@endif
+        @if ($project->isDirect() && $u->hasPerm('quick_launch.update'))<x-confirm :action="route('ws.quick-launch.convert', $project)" message="Convert {{ $project->name }} to a full project? Approval stages and sub-tasks are created from today so you can track them. Plots, bookings and sales stay as they are." class="btn-light">Convert to full project</x-confirm>@endif
+        @if (! $project->isDirect() && $u->hasPerm('estimates.view') && \App\Services\PlanLimiter::moduleEnabled($project->tenantRel, 'estimates'))<a href="{{ route('ws.estimate.edit', $project) }}" class="btn-light"><x-icon name="rupee" class="h-4 w-4" /> Estimate</a>@endif
+        @if (! $project->isDirect() && $project->stages->isNotEmpty() && $u->hasPerm('tracking.view'))<a href="{{ route('ws.tracking.show', $project) }}" class="btn-primary"><x-icon name="clipboard" class="h-4 w-4" /> Tracking</a>@endif
     </x-page-header>
 
     {{-- Status flow --}}
+    @if ($project->isDirect())
+        <div class="mb-6 rounded-xl bg-purple-50 p-4 text-sm text-purple-900 ring-1 ring-purple-200">This layout was published with <strong>Quick Launch</strong> — no estimate or stage tracking. Bookings, sales, payments and registration work as usual. Convert it to a full project if you want to track approvals and spend.</div>
+    @endif
     @php($flow = ['draft', 'init', 'go_no_go', 'in_progress', 'ready_to_launch', 'launched'])
     @php($idx = array_search($project->status, $flow))
     <ol class="mb-6 flex gap-1 overflow-x-auto pb-1" aria-label="Project status">
