@@ -35,6 +35,9 @@ Route::get('/brochure/{kind}/{id}', [Market\MediaController::class, 'brochure'])
 Route::get('/media/{image}/{size}', [Market\MediaController::class, 'image'])->whereNumber('image')->whereIn('size', ['full', 'thumb'])->name('market.image');
 // Property search, listings, contact block (spec 17.5 / 17.7 / 17.8)
 Route::get('/search', [Market\SearchController::class, 'index'])->middleware('throttle:search')->name('market.search');
+Route::get('/chat', [Market\ChatController::class, 'history'])->name('market.chat');
+Route::post('/chat', [Market\ChatController::class, 'send'])->middleware('throttle:chat')->name('market.chat.send');
+Route::post('/chat/consent', [Market\ChatController::class, 'consent'])->middleware('throttle:reveal')->name('market.chat.consent');
 Route::get('/compare', [Market\ShortlistController::class, 'compare'])->name('market.compare');
 Route::post('/contact/{kind}/{id}/reveal', [Market\ContactController::class, 'reveal'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:reveal')->name('market.contact.reveal');
 Route::post('/contact/{kind}/{id}/email', [Market\ContactController::class, 'email'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:enquiry')->name('market.contact.email');

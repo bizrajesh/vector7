@@ -118,5 +118,8 @@
     </div>
     <div class="border-t border-white/10"><p class="mx-auto max-w-7xl px-4 py-5 text-xs sm:px-6">© {{ date('Y') }} {{ $org('org.name') }}. Prices and availability are set by each promoter and may change.</p></div>
 </footer>
+@if (\App\Services\AppSettings::get('ai.market_chat_enabled', '1') === '1')
+    @include('partials.chat-widget', ['bot' => 'market', 'historyUrl' => route('market.chat'), 'sendUrl' => route('market.chat.send'), 'consentUrl' => route('market.chat.consent'), 'title' => \App\Services\AppSettings::get('ai.bot_name', 'Vee').' · vector7 assistant'])
+@endif
 </body>
 </html>

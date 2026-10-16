@@ -707,6 +707,105 @@
     });
   }
 
+
+  /* ---------- Chatbots (spec 17.9 marketplace, 17.10 workspace): one panel, JSON endpoints ---------- */
+  function initChat() {
+    $$('[data-chat]').forEach(function (root) {
+      var panel = $('[data-chat-panel]', root), log = $('[data-chat-log]', root), form = $('[data-chat-form]', root), input = $('input', form);
+      var token = ($('meta[name=csrf-token]') || {}).content, loaded = false, busy = false;
+      var post = function (url, body) {
+        return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
+      };
+      var errText = function (res) {
+        if (res.status === 429) return 'You are sending messages too fast — please wait a minute.';
+        return (res.j && res.j.errors && Object.values(res.j.errors)[0][0]) || (res.j && res.j.message) || 'Something went wrong. Please try again.';
+      };
+      var scroll = function () { log.scrollTop = log.scrollHeight; };
+      var bubble = function (role, text) {
+        var d = document.createElement('div');
+        d.className = role === 'user' ? 'ml-8 rounded-2xl rounded-br-sm bg-navy px-3 py-2 text-white' : 'mr-8 rounded-2xl rounded-bl-sm bg-white px-3 py-2 ring-1 ring-navy-50';
+        d.innerHTML = esc(text).replace(/\n/g, '<br>');
+        log.appendChild(d); scroll(); return d;
+      };
+      var cards = function (list) {
+        (list || []).forEach(function (c) {
+          var a = document.createElement('a');
+          a.href = c.url; a.className = 'flex gap-3 rounded-xl bg-white p-2 text-navy no-underline ring-1 ring-navy-50 hover:ring-teal-600';
+          a.innerHTML = (c.image ? '<img src="' + esc(c.image) + '" alt="" class="h-16 w-20 shrink-0 rounded-lg object-cover" loading="lazy">' : '') +
+            '<span class="min-w-0"><span class="block truncate font-bold">' + esc(c.title) + '</span><span class="block truncate text-xs text-muted">' + esc(c.type || '') + ' · ' + esc(c.location || '') +
+            '</span><span class="block text-sm font-semibold text-teal-700">' + esc(c.price || '') + '</span>' + (c.specs ? '<span class="block truncate text-xs">' + esc(c.specs) + '</span>' : '') + '</span>';
+          log.appendChild(a);
+        });
+        scroll();
+      };
+      var table = function (t) {
+        if (!t || !t.columns) return;
+        var w = document.createElement('div'); w.className = 'overflow-x-auto rounded-xl bg-white ring-1 ring-navy-50';
+        w.innerHTML = '<table class="w-full text-xs"><thead><tr>' + t.columns.map(function (c) { return '<th class="px-2 py-1 text-left">' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          t.rows.map(function (r) { return '<tr class="border-t border-navy-50">' + r.map(function (v) { return '<td class="px-2 py-1">' + esc(v) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>' +
+          (t.export ? '<a class="block px-2 py-1 text-xs font-semibold" href="' + esc(t.export) + '">Download Excel</a>' : '');
+        log.appendChild(w); scroll();
+      };
+      var action = function (a) {
+        if (!a) return;
+        var box = document.createElement('div'); box.className = 'rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200';
+        if (a.type === 'create_lead') {
+          box.innerHTML = '<p class="font-semibold">Share your details with the owner of ' + esc(a.title) + '?</p>' +
+            '<label class="mt-2 block text-xs">Your name<input name="name" class="input mt-1" maxlength="100" required></label>' +
+            '<label class="mt-2 block text-xs">Mobile<input name="mobile" class="input mt-1" inputmode="numeric" maxlength="10" required></label>' +
+            '<label class="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" name="consent" class="checkbox mt-0.5"> I agree to share my name and mobile with the owner so they can contact me.</label>' +
+            '<p class="error hidden" data-err></p><button type="button" class="btn-primary btn-sm mt-2">Share and ask to call me</button>';
+          $('button', box).addEventListener('click', function () {
+            var body = { key: a.key, note: a.note || '', name: $('[name=name]', box).value, mobile: $('[name=mobile]', box).value, consent: $('[name=consent]', box).checked ? 1 : 0 };
+            post(root.getAttribute('data-consent'), body).then(function (res) {
+              if (!res.ok) { var e = $('[data-err]', box); e.textContent = errText(res); e.classList.remove('hidden'); return; }
+              box.remove(); bubble('assistant', res.j.text);
+            });
+          });
+        } else if (a.type === 'draft') {
+          box.innerHTML = '<p class="text-xs font-semibold">' + esc(a.label || 'Draft') + '</p><textarea class="input mt-1 h-32 text-xs">' + esc(a.text) + '</textarea>' +
+            '<div class="mt-2 flex gap-2"><button type="button" class="btn-light btn-sm" data-copy>Copy</button>' + (a.apply_url ? '<a class="btn-primary btn-sm" href="' + esc(a.apply_url) + '">' + esc(a.apply_label || 'Open') + '</a>' : '') + '</div>';
+          $('[data-copy]', box).addEventListener('click', function () { var t = $('textarea', box); t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } });
+        } else if (a.type === 'confirm') {
+          box.innerHTML = '<p class="text-sm">' + esc(a.summary) + '</p><div class="mt-2 flex gap-2"><button type="button" class="btn-primary btn-sm" data-yes>Confirm</button><button type="button" class="btn-ghost btn-sm" data-no>Cancel</button></div><p class="error hidden" data-err></p>';
+          $('[data-yes]', box).addEventListener('click', function () {
+            post(a.url, a.payload || {}).then(function (res) {
+              if (!res.ok) { var e = $('[data-err]', box); e.textContent = errText(res); e.classList.remove('hidden'); return; }
+              box.remove(); bubble('assistant', res.j.text || 'Done.');
+            });
+          });
+          $('[data-no]', box).addEventListener('click', function () { box.remove(); bubble('assistant', 'Cancelled — nothing was changed.'); });
+        }
+        log.appendChild(box); scroll();
+      };
+      var render = function (m) { bubble(m.role, m.text); cards(m.cards); table(m.table); if (m.role === 'assistant') action(m.action); };
+      var load = function () {
+        if (loaded) return; loaded = true;
+        fetch(root.getAttribute('data-history'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j.greeting) bubble('assistant', j.greeting);
+          (j.messages || []).forEach(render);
+        }).catch(function () { bubble('assistant', 'The assistant is not available right now.'); });
+      };
+      var open = function () { panel.classList.remove('hidden'); panel.classList.add('flex'); load(); input.focus(); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); }); };
+      var close = function () { panel.classList.add('hidden'); panel.classList.remove('flex'); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); }); };
+      $$('[data-chat-open]').forEach(function (b) { b.addEventListener('click', function () { panel.classList.contains('hidden') ? open() : close(); }); });
+      $('[data-chat-close]', root).addEventListener('click', close);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.classList.contains('hidden')) close(); });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var text = input.value.trim(); if (!text || busy) return;
+        busy = true; input.value = ''; bubble('user', text);
+        var wait = bubble('assistant', '…');
+        post(root.getAttribute('data-send'), { message: text }).then(function (res) {
+          wait.remove();
+          if (!res.ok) { bubble('assistant', errText(res)); return; }
+          render({ role: 'assistant', text: res.j.text, cards: res.j.cards, table: res.j.table, action: res.j.action });
+        }).catch(function () { wait.remove(); bubble('assistant', 'Could not reach the server.'); }).finally(function () { busy = false; });
+      });
+    });
+  }
+
   /* ---------- "Write with AI" buttons: send the form's fields, put the draft into a textarea ---------- */
   function initAiWrite() {
     $$('[data-ai-write]').forEach(function (btn) {
@@ -775,6 +874,6 @@
     initSidebar(); initPublicNav(); initDropdowns(); initPasswords(); initWidths(); initConfirm(); initCopy(); initBulk();
     initRepeaters(); initEstimate(); initCalc(); initTooltips(); initPlotFilters(); initCarousels(); initReveal(); initCharts();
     initPinEditor(); initConditional(); initLookups(); initPlotPicker(); initAutoSubmit(); initPrint(); initGrid(); initDepends();
-    initKanban(); initMaps(); initAiWrite(); initDropzones(); initSortable(); initContact(); initSearchUi();
+    initKanban(); initMaps(); initAiWrite(); initDropzones(); initSortable(); initContact(); initSearchUi(); initChat();
   });
 })();

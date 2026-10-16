@@ -75,6 +75,8 @@ Artisan::command('seo:build {--ai : Write titles/descriptions with Claude}', fn 
 Artisan::command('v7:lead-reminders', fn () => $this->info(json_encode(\App\Services\LeadReminders::morning())))->purpose('9:00 lead follow-up emails per user and the daily leads summary');
 Artisan::command('v7:lead-soon', fn () => $this->info(\App\Services\LeadReminders::soon().' reminder(s) sent'))->purpose('Reminders 15 minutes before scheduled lead follow-ups');
 
+Artisan::command('v7:chat-purge', fn () => $this->info(\App\Services\MarketBot::purge().' old conversation(s) deleted'))->purpose('Delete chatbot conversations older than 90 days');
+
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')->everyMinute()->withoutOverlapping()->runInBackground();
 Schedule::command('v7:bookings')->hourly()->withoutOverlapping();
 Schedule::command('v7:offers')->dailyAt('00:05');
@@ -87,4 +89,5 @@ Schedule::command('v7:requirements')->dailyAt('09:00');
 Schedule::command('v7:lead-reminders')->dailyAt('09:00');
 Schedule::command('v7:lead-soon')->everyMinute()->withoutOverlapping();
 Schedule::command('seo:build')->dailyAt('03:00');
+Schedule::command('v7:chat-purge')->dailyAt('03:30');
 Schedule::command('v7:backup')->dailyAt('02:00')->withoutOverlapping();
