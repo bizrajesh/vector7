@@ -21,7 +21,7 @@ class EnquiryController extends Controller
             'mobile' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'message' => 'required|string|max:2000',
             'website' => 'nullable|max:0', // honeypot
-        ], ['mobile.regex' => 'Enter a 10-digit mobile number.']);
+        ], ['mobile.regex' => __('Enter a 10-digit mobile number.')]);
         $project = Project::launched()->findOrFail($data['project_id']);
         $plot = isset($data['plot_id']) ? Plot::where('project_id', $project->id)->find($data['plot_id']) : null;
         $customer = auth('customer')->user();
@@ -30,6 +30,6 @@ class EnquiryController extends Controller
             'message' => $data['message'], 'consent' => true,
         ], array_filter(['project_id' => $project->id, 'plot_id' => $plot?->id]));
 
-        return back()->with('ok', 'Thanks! '.$project->tenantRel->name.' will contact you shortly.');
+        return back()->with('ok', __('Thanks! :name will contact you shortly.', ['name' => $project->tenantRel->name]));
     }
 }

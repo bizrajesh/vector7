@@ -27,9 +27,9 @@ class Passwords
     public static function messages(): array
     {
         return [
-            'password.regex' => 'The password must not start or end with a space.',
-            'password.min' => 'The password must be at least 8 characters.',
-            'password.max' => 'The password must not be longer than 32 characters.',
+            'password.regex' => __('The password must not start or end with a space.'),
+            'password.min' => __('The password must be at least 8 characters.'),
+            'password.max' => __('The password must not be longer than 32 characters.'),
         ];
     }
 

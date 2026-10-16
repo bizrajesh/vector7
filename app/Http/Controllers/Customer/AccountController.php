@@ -118,7 +118,7 @@ class AccountController extends Controller
         ]);
         $c->update($data);
 
-        return back()->with('ok', 'Profile saved.');
+        return back()->with('ok', __('Profile saved.'));
     }
 
     public function updatePassword(Request $request)
@@ -128,6 +128,6 @@ class AccountController extends Controller
         $c->forceFill(['password' => $request->password])->saveQuietly();
         Auth::guard('customer')->logoutOtherDevices($request->password);
 
-        return back()->with('ok', 'Password changed.');
+        return back()->with('ok', __('Password changed.'));
     }
 }

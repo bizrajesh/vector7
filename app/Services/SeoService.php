@@ -33,6 +33,10 @@ class SeoService
     /** Stored (editable) meta for a page, falling back to generated defaults. */
     public static function meta(string $type, string $key, string $title, string $description): array
     {
+        // Saved SEO texts are English; Tamil pages use the translated defaults.
+        if (app()->getLocale() !== 'en') {
+            return ['title' => self::title(__($title)), 'description' => self::description(__($description))];
+        }
         $m = SeoMeta::where('page_type', $type)->where('page_key', $key)->first();
 
         return [
@@ -226,7 +230,7 @@ class SeoService
         if (! config('seo.indexable')) {
             return "User-agent: *\nDisallow: /\n";
         }
-        $lines = ["User-agent: *", 'Disallow: /workspace', 'Disallow: /app', 'Disallow: /account', 'Disallow: /files', 'Disallow: /profile', 'Disallow: /login', 'Disallow: /register', 'Disallow: /*?*sort=', 'Allow: /'];
+        $lines = ["User-agent: *", 'Disallow: /workspace', 'Disallow: /account', 'Disallow: /files', 'Disallow: /profile', 'Disallow: /login', 'Disallow: /register', 'Disallow: /*?*sort=', 'Allow: /'];
         if (AppSettings::get('seo.ai_crawlers', 'allow') === 'block') {
             foreach (config('seo.ai_crawlers') as $bot) {
                 $lines[] = '';

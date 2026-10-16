@@ -38,9 +38,9 @@ class CommercialType extends ListingType
         $d = $l->type_details ?? [];
 
         return array_values(array_filter([
-            isset($d['sub_type']) ? ucfirst($d['sub_type']) : null,
-            $l->area_sqft ? Format::num($l->area_sqft).' sq ft' : null,
-            isset($d['frontage_ft']) ? Format::num($d['frontage_ft']).' ft frontage' : null,
+            isset($d['sub_type']) ? __(ucfirst($d['sub_type'])) : null,
+            $l->area_sqft ? Format::num($l->area_sqft).' '.__('sq ft') : null,
+            isset($d['frontage_ft']) ? __(':ft ft frontage', ['ft' => Format::num($d['frontage_ft'])]) : null,
         ]));
     }
 }

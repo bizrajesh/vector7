@@ -42,14 +42,14 @@ class ChatController extends Controller
             'mobile' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'note' => 'nullable|string|max:300',
             'consent' => 'accepted',
-        ], ['mobile.regex' => 'Enter a 10-digit mobile number.', 'consent.accepted' => 'Please tick the box to agree to share your details.']);
+        ], ['mobile.regex' => __('Enter a 10-digit mobile number.'), 'consent.accepted' => __('Please tick the box to agree to share your details.')]);
         $c = MarketBot::conversation($request->session()->get('chat_token'), auth('customer')->id(), false) ?? abort(404);
         $pending = ChatMessage::where('chat_conversation_id', $c->id)->where('role', 'assistant')->latest('id')->take(10)->get()
             ->contains(fn ($m) => ($m->meta['action']['key'] ?? null) === $data['key']);
-        abort_unless($pending, 422, 'Ask the assistant to contact the owner first.');
+        abort_unless($pending, 422, __('Ask the assistant to contact the owner first.'));
         MarketBot::confirmLead($c, $data['key'], $data['name'], $data['mobile'], $data['note'] ?? null, auth('customer')->id());
         $request->session()->put('contact_person', ['name' => $data['name'], 'mobile' => $data['mobile']]);
 
-        return response()->json(['text' => 'Thanks '.$data['name'].'! The owner will contact you soon.']);
+        return response()->json(['text' => __('Thanks :name! The owner will contact you soon.', ['name' => $data['name']])]);
     }
 }

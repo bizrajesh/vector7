@@ -35,7 +35,7 @@ class BookingController extends Controller
         $data = $request->validate([
             'promo_code' => 'nullable|string|max:30',
             'disclaimer' => 'accepted',
-        ], ['disclaimer.accepted' => 'Please read and accept the booking terms.']);
+        ], ['disclaimer.accepted' => __('Please read and accept the booking terms.')]);
         try {
             $booking = SalesService::book($plot, $request->user('customer'), 'marketplace', $data['promo_code'] ?? null, $request->ip());
         } catch (ValidationException $e) {
@@ -44,6 +44,6 @@ class BookingController extends Controller
             app(Tenancy::class)->set(null);
         }
 
-        return redirect()->route('account.bookings')->with('ok', "Booked! Booking {$booking->booking_no} for Plot {$plot->plot_no} is valid till {$booking->valid_till->format('d-m-Y')}. The promoter will contact you for the first instalment.");
+        return redirect()->route('account.bookings')->with('ok', __('Booked! Booking :no for Plot :plot is valid till :date. The promoter will contact you for the first instalment.', ['no' => $booking->booking_no, 'plot' => $plot->plot_no, 'date' => $booking->valid_till->format('d-m-Y')]));
     }
 }

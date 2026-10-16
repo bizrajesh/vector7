@@ -30,13 +30,13 @@ class SearchController extends Controller
 
             return $this->render($request, [
                 'mode' => 'ai', 'q' => $q, 'items' => $res['items'], 'total' => $res['items']->count(), 'filters' => $res['filters'],
-                'relaxed' => $res['relaxed'], 'usedAi' => $res['used_ai'], 'title' => 'Results for “'.Str::limit($q, 60).'”',
+                'relaxed' => $res['relaxed'], 'usedAi' => $res['used_ai'], 'title' => __('Results for “:q”', ['q' => Str::limit($q, 60)]),
                 'seo' => ['title' => 'Search: '.Str::limit($q, 50), 'description' => 'Property search results on vector7.', 'robots' => 'noindex,follow', 'canonical' => route('market.search')],
             ]);
         }
         $filters = PropertySearch::fromRequest($request->query());
 
-        return $this->filtered($request, $filters, $this->titleFor($filters), ['robots' => 'noindex,follow', 'canonical' => route('market.search')]);
+        return $this->filtered($request, $filters, $this->titleFor($filters), ['robots' => 'noindex,follow', 'canonical' => route('market.search')], 'search');
     }
 
     /** /buy | /rent | /{purpose}/{type} | /{purpose}/{type}/{city} */
@@ -58,8 +58,12 @@ class SearchController extends Controller
             'purpose' => $purpose === 'rent' ? 'rent' : 'sale',
             'places' => $place ? [$place] : null,
         ]));
+        if ($purpose === 'rent' && ! $typeKey) {
+            $filters['types'] = PropertySearch::RENT_TYPES; // Rent menu: only types that can be rented
+        }
         $filters = PropertySearch::clean($filters);
         $title = $this->titleFor($filters);
+        $context = $typeKey === 'layout' ? 'layouts' : ($purpose === 'rent' ? 'rent' : 'buy');
         $canonical = PropertySearch::categoryUrl($typeKey ?? 'layout', $filters['purpose'], $place);
         if (! $typeKey) {
             $canonical = route('market.category', ['purpose' => $purpose]);
@@ -67,10 +71,13 @@ class SearchController extends Controller
         // Filtered variants of a category page are not separate pages for search engines.
         $robots = count($request->query()) > 0 ? 'noindex,follow' : 'index,follow';
 
-        return $this->filtered($request, $filters, $title, ['canonical' => $canonical, 'robots' => $robots, 'breadcrumbs' => true]);
+        return $this->filtered($request, $filters, $title, ['canonical' => $canonical, 'robots' => $robots, 'breadcrumbs' => true], $context, $typeKey);
     }
 
-    private function filtered(Request $request, array $filters, string $title, array $seo)
+    /**
+     * @param  string  $context  search | buy | rent | layouts — which menu the visitor came from; decides the filter panel
+     */
+    private function filtered(Request $request, array $filters, string $title, array $seo, string $context = 'search', ?string $pathType = null)
     {
         $sort = array_key_exists($request->query('sort'), PropertySearch::SORTS) ? $request->query('sort') : 'relevance';
         $res = PropertySearch::search($filters, $sort, false, 600);
@@ -78,7 +85,9 @@ class SearchController extends Controller
 
         return $this->render($request, [
             'mode' => 'filters', 'q' => '', 'items' => $res['items'], 'total' => $res['items']->count(), 'filters' => $filters, 'relaxed' => [], 'usedAi' => false,
-            'title' => $title, 'sort' => $sort, 'seo' => $meta + $seo,
+            'title' => $title, 'sort' => $sort, 'seo' => $meta + $seo, 'context' => $context, 'pathType' => $pathType,
+            // On menu pages the path fixes type / purpose / place, so chips only cover the extra filters
+            'chipFilters' => $context === 'search' ? $filters : PropertySearch::fromRequest($request->query()),
         ]);
     }
 
@@ -101,7 +110,9 @@ class SearchController extends Controller
         unset($seo['breadcrumbs']);
 
         return view('market.search', $data + [
-            'view' => $view, 'paged' => $paged, 'sort' => $data['sort'] ?? 'relevance', 'chips' => PropertySearch::chips($data['filters']),
+            'context' => $data['context'] ?? 'search', 'pathType' => $data['pathType'] ?? null,
+            'formAction' => in_array($data['context'] ?? 'search', ['buy', 'rent', 'layouts'], true) ? $request->url() : route('market.search'),
+            'view' => $view, 'paged' => $paged, 'sort' => $data['sort'] ?? 'relevance', 'chips' => PropertySearch::chips($data['chipFilters'] ?? $data['filters']),
             'query' => PropertySearch::toQuery($data['filters']), 'shortlisted' => $shortlisted, 'seo' => $seo, 'jsonld' => $jsonld,
             'places' => PropertySearch::knownPlaces()->sort()->values(),
             'pins' => $view === 'map' ? $items->filter(fn ($i) => $i['lat'] !== null && $i['lng'] !== null)->take(300)->map(fn ($i) => [
@@ -116,10 +127,10 @@ class SearchController extends Controller
     {
         $customer = auth('customer')->user();
         $filters = PropertySearch::fromRequest($request->input());
-        abort_if(SavedSearch::where('customer_id', $customer->id)->count() >= 20, 422, 'You can save up to 20 searches.');
+        abort_if(SavedSearch::where('customer_id', $customer->id)->count() >= 20, 422, __('You can save up to 20 searches.'));
         SavedSearch::create(['customer_id' => $customer->id, 'query_text' => mb_substr((string) $request->input('q'), 0, 500) ?: null, 'filters' => $filters, 'alerts' => true]);
 
-        return back()->with('ok', 'Search saved. We will email you when a new property matches it.');
+        return back()->with('ok', __('Search saved. We will email you when a new property matches it.'));
     }
 
     private function placeFromSlug(string $slug): ?string
@@ -131,19 +142,18 @@ class SearchController extends Controller
     {
         $types = $f['types'];
         $what = match (true) {
-            $types === ['plot', 'layout'] || $types === ['layout', 'plot'] => 'Plots',
-            $types === ['layout'] => 'Approved layouts',
-            count($types) === 1 => ListingTypes::get($types[0])->plural(),
-            default => 'Properties',
+            $types === ['plot', 'layout'] || $types === ['layout', 'plot'] => __('Plots'),
+            $types === ['layout'] => __('Approved layouts'),
+            count($types) === 1 => __(ListingTypes::get($types[0])->plural()),
+            default => __('Properties'),
         };
-        $purpose = $f['purpose'] === 'rent' ? ' for rent' : ($f['purpose'] === 'sale' ? ' for sale' : '');
-        $where = $f['places'] ? ' in '.implode(', ', $f['places']) : '';
+        $key = ($f['purpose'] === 'rent' ? ':what for rent' : ($f['purpose'] === 'sale' ? ':what for sale' : ':what')).($f['places'] ? ' in :place' : '');
 
-        return $what.$purpose.$where;
+        return __($key, ['what' => $what, 'place' => implode(', ', $f['places'])]);
     }
 
     private function descriptionFor(array $f, int $count): string
     {
-        return $this->titleFor($f).' — '.$count.' verified '.($count === 1 ? 'property' : 'properties').' listed by promoters and owners on vector7, with photos, prices, offers and map location.';
+        return __(':title — :count verified properties listed by promoters and owners on vector7, with photos, prices, offers and map location.', ['title' => $this->titleFor($f), 'count' => $count]);
     }
 }

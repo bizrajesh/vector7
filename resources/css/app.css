@@ -2,6 +2,9 @@
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2'); }
+/* Tamil script (marketplace in தமிழ்): only downloaded when a page shows Tamil characters. Noto Sans Tamil, SIL OFL 1.1. */
+@font-face { font-family: 'Noto Sans Tamil'; font-style: normal; font-weight: 400 600; font-display: swap; src: url('../fonts/noto-sans-tamil-tamil-400-normal.woff2') format('woff2'); unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC; }
+@font-face { font-family: 'Noto Sans Tamil'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('../fonts/noto-sans-tamil-tamil-700-normal.woff2') format('woff2'); unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC; }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2'); }
 
 @tailwind base;
@@ -184,3 +187,7 @@
   .prose-v7 th, .prose-v7 td { @apply border-b border-navy-50 px-2 py-1 text-left; }
   .prose-v7 strong { @apply font-bold text-navy; }
 }
+
+/* Tamil text is longer and taller: relax tight headings and leading on the Tamil marketplace. */
+.lang-ta h1, .lang-ta h2 { letter-spacing: 0; line-height: 1.3; }
+.lang-ta h1 { font-size: clamp(2rem, 4.2vw, 3.25rem); }

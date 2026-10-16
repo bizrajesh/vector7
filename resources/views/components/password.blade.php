@@ -6,7 +6,7 @@
         <input id="{{ $id }}" name="{{ $name }}" type="password" required autocomplete="{{ $autocomplete }}"
             @if ($policy) minlength="8" maxlength="32" data-password-policy @endif
             class="input pr-11 @error($name) input-error @enderror" @error($name) aria-invalid="true" @enderror>
-        <button type="button" class="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-navy" data-toggle-password="{{ $id }}" aria-label="Show password" aria-pressed="false">
+        <button type="button" class="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-navy" data-toggle-password="{{ $id }}" aria-label="{{ __('Show password') }}" aria-pressed="false">
             <span data-eye>{!! \App\Support\Icons::svg('eye') !!}</span><span data-eye-off class="hidden">{!! \App\Support\Icons::svg('eye-off') !!}</span>
         </button>
     </div>

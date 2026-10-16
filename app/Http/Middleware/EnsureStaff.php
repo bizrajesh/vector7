@@ -14,10 +14,11 @@ class EnsureStaff
     {
         $user = Auth::guard('web')->user();
         if (! $user || ! $user->is_active || ($user->tenant_id && $user->tenant?->status !== 'active')) {
+            $loginRoute = $user?->isAppUser() ? 'app.login' : 'staff.login';
             Auth::guard('web')->logout();
             $request->session()->invalidate();
 
-            return redirect()->route('staff.login')->with('error', 'Your account is disabled. Contact your administrator.');
+            return redirect()->route($loginRoute)->with('error', 'Your account is disabled. Contact your administrator.');
         }
         if ($user->must_change_password) {
             return redirect()->route('staff.force-password');

@@ -123,9 +123,9 @@ abstract class ListingType
     public function specs(Listing $l): array
     {
         return array_values(array_filter([
-            $l->bhk ? $l->bhk.' BHK' : null,
-            $l->area_sqft ? \App\Support\Format::num($l->area_sqft).' sq ft' : null,
-            $l->facing ? $l->facing.' facing' : null,
+            $l->bhk ? $l->bhk.' '.__('BHK') : null,
+            $l->area_sqft ? \App\Support\Format::num($l->area_sqft).' '.__('sq ft') : null,
+            $l->facing ? __(':facing facing', ['facing' => __($l->facing)]) : null,
         ]));
     }
 
@@ -139,11 +139,11 @@ abstract class ListingType
                 continue;
             }
             $v = $d[$name];
-            $rows[$f['label']] = match ($f['kind']) {
-                'bool' => $v ? 'Yes' : 'No',
-                'select' => $f['options'][$v] ?? $v,
-                'number' => \App\Support\Format::num($v, fmod((float) $v, 1) ? 2 : 0).(isset($f['unit']) ? ' '.$f['unit'] : ''),
-                'integer' => $v.(isset($f['unit']) ? ' '.$f['unit'] : ''),
+            $rows[__($f['label'])] = match ($f['kind']) {
+                'bool' => $v ? __('Yes') : __('No'),
+                'select' => __($f['options'][$v] ?? $v),
+                'number' => \App\Support\Format::num($v, fmod((float) $v, 1) ? 2 : 0).(isset($f['unit']) ? ' '.__($f['unit']) : ''),
+                'integer' => $v.(isset($f['unit']) ? ' '.__($f['unit']) : ''),
                 default => $v,
             };
         }

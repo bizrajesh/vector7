@@ -28,8 +28,8 @@ class ContactController extends Controller
         [$owner, $c, $title, $code, $url] = $this->owner($kind, $id);
         $mode = $request->validate(['mode' => ['required', Rule::in(array_keys(self::MODES))]])['mode'];
         $modes = $c['modes'];
-        abort_if($mode === 'whatsapp' && ! in_array('whatsapp', $modes, true), 422, 'WhatsApp is not enabled for this property.');
-        abort_if(in_array($mode, ['call', 'show'], true) && ! in_array('call', $modes, true), 422, 'Calls are not enabled for this property.');
+        abort_if($mode === 'whatsapp' && ! in_array('whatsapp', $modes, true), 422, __('WhatsApp is not enabled for this property.'));
+        abort_if(in_array($mode, ['call', 'show'], true) && ! in_array('call', $modes, true), 422, __('Calls are not enabled for this property.'));
 
         $person = $request->session()->get('contact_person');
         $customer = auth('customer')->user();
@@ -43,7 +43,7 @@ class ContactController extends Controller
                 'mobile' => ['required', 'regex:/^[6-9]\d{9}$/'],
                 'consent' => 'accepted',
                 'website' => 'nullable|max:0',
-            ], ['mobile.regex' => 'Enter a 10-digit mobile number.', 'consent.accepted' => 'Please agree to share your details with the owner.']);
+            ], ['mobile.regex' => __('Enter a 10-digit mobile number.'), 'consent.accepted' => __('Please agree to share your details with the owner.')]);
             $person = ['name' => $data['name'], 'mobile' => $data['mobile']];
             $request->session()->put('contact_person', $person);
         }
@@ -66,14 +66,14 @@ class ContactController extends Controller
             return redirect()->away($out['whatsapp']);
         }
 
-        return back()->with('revealed', [$kind.':'.$id => $out])->with('ok', 'Contact '.$c['name'].' on '.$out['display'].'.');
+        return back()->with('revealed', [$kind.':'.$id => $out])->with('ok', __('Contact :name on :number.', ['name' => $c['name'], 'number' => $out['display']]));
     }
 
     /** Email enquiry form on a listing / layout. */
     public function email(Request $request, string $kind, int $id)
     {
         [$owner, $c, $title, $code, $url] = $this->owner($kind, $id);
-        abort_unless(in_array('email', $c['modes'], true), 422, 'Email enquiries are not enabled for this property.');
+        abort_unless(in_array('email', $c['modes'], true), 422, __('Email enquiries are not enabled for this property.'));
         $data = $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|max:255',
@@ -81,7 +81,7 @@ class ContactController extends Controller
             'message' => 'required|string|max:2000',
             'consent' => 'accepted',
             'website' => 'nullable|max:0',
-        ], ['mobile.regex' => 'Enter a 10-digit mobile number.', 'consent.accepted' => 'Please agree to share your details with the owner.']);
+        ], ['mobile.regex' => __('Enter a 10-digit mobile number.'), 'consent.accepted' => __('Please agree to share your details with the owner.')]);
         $customer = auth('customer')->user();
         $lead = LeadService::capture($owner->tenant_id, $request->input('src') === 'ai' ? 'ai_search' : 'enquiry', [
             'name' => $data['name'], 'email' => $data['email'], 'mobile' => $data['mobile'], 'customer_id' => $customer?->id, 'message' => $data['message'], 'consent' => true,
@@ -92,7 +92,7 @@ class ContactController extends Controller
         }
         $request->session()->put('contact_person', ['name' => $data['name'], 'mobile' => $data['mobile']]);
 
-        return back()->with('ok', 'Thanks! Your message was sent to '.$c['name'].'. They will contact you shortly.');
+        return back()->with('ok', __('Thanks! Your message was sent to :name. They will contact you shortly.', ['name' => $c['name']]));
     }
 
     /** @return array{0: Listing|Project, 1: array, 2: string, 3: string, 4: string} */

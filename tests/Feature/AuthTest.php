@@ -17,9 +17,23 @@ class AuthTest extends TestCase
         $this->assertGuest('web');
     }
 
-    public function test_app_admin_lands_on_app_workspace(): void
+    public function test_app_admin_uses_separate_app_login(): void
     {
-        $this->post('/workspace/login', ['email' => 'admin@vector7.in', 'password' => 'ChangeMe@2026'])->assertRedirect(route('app.dashboard'));
+        // The promoter workspace sign-in (linked from the marketplace) refuses App users.
+        $this->post('/workspace/login', ['email' => 'admin@vector7.in', 'password' => 'ChangeMe@2026'])->assertSessionHasErrors('email');
+        $this->assertGuest('web');
+        // The separate App sign-in works for App users and is never linked from the marketplace.
+        $this->get('/app/login')->assertOk()->assertSee('vector7 App sign in')->assertSee('noindex', false);
+        $this->post('/app/login', ['email' => 'admin@vector7.in', 'password' => 'ChangeMe@2026'])->assertRedirect(route('app.dashboard'));
+        $this->post('/workspace/logout')->assertRedirect(route('app.login'));
+        // Tenant users cannot use the App sign-in.
+        [, $admin] = $this->makeTenant('Login Sep Co');
+        $this->post('/app/login', ['email' => $admin->email, 'password' => 'Secret@123'])->assertSessionHasErrors('email');
+        $this->assertGuest('web');
+        // Guests sent to the App workspace land on the App sign-in; the marketplace never links to it.
+        $this->get('/app')->assertRedirect(route('app.login'));
+        $this->get('/')->assertOk()->assertDontSee('/app/login');
+        $this->get('/robots.txt')->assertDontSee('/app');
     }
 
     public function test_customer_cannot_use_staff_login_and_vice_versa(): void

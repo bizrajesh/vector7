@@ -64,7 +64,7 @@ class Listing extends Model
 
     public function typeLabel(): string
     {
-        return $this->type()->label();
+        return __($this->type()->label());
     }
 
     public function images(): HasMany
@@ -109,12 +109,12 @@ class Listing extends Model
 
     public function statusLabel(): string
     {
-        return self::STATUSES[$this->status] ?? $this->status;
+        return __(self::STATUSES[$this->status] ?? $this->status);
     }
 
     public function purposeLabel(): string
     {
-        return $this->purpose === 'rent' ? 'For rent' : 'For sale';
+        return $this->purpose === 'rent' ? __('For rent') : __('For sale');
     }
 
     public function purposeSlug(): string
@@ -173,7 +173,7 @@ class Listing extends Model
 
     public function priceSuffix(): string
     {
-        return $this->purpose === 'rent' ? ' / month' : '';
+        return $this->purpose === 'rent' ? ' '.__('/ month') : '';
     }
 
     public function specs(): array

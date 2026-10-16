@@ -21,7 +21,7 @@ class DemoSmokeTest extends TestCase
     private function getRoutes(string $prefix): array
     {
         return collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($r) => in_array('GET', $r->methods()) && str_starts_with((string) $r->getName(), $prefix) && ! str_contains($r->uri(), '{'))
+            ->filter(fn ($r) => in_array('GET', $r->methods()) && str_starts_with((string) $r->getName(), $prefix) && ! str_contains($r->uri(), '{') && ! in_array($r->getName(), ['app.login'], true))
             ->map(fn ($r) => $r->getName())->values()->all();
     }
 

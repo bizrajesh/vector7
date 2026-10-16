@@ -100,9 +100,14 @@ Route::middleware(['auth:customer', 'auth.session'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Staff login (App users and tenant users) — /workspace/login
+| Staff logins — /workspace/login (promoters and their teams) and
+| /app/login (vector7 App team; separate page, never linked from the marketplace)
 |--------------------------------------------------------------------------
 */
+Route::middleware('guest:web')->group(function () {
+    Route::get('/app/login', [Auth\StaffAuthController::class, 'showAppLogin'])->name('app.login');
+    Route::post('/app/login', [Auth\StaffAuthController::class, 'appLogin'])->middleware('throttle:login')->name('app.login.post');
+});
 Route::prefix('workspace')->group(function () {
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', [Auth\StaffAuthController::class, 'showLogin'])->name('staff.login');

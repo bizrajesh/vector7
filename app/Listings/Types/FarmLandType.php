@@ -42,9 +42,9 @@ class FarmLandType extends ListingType
         $d = $l->type_details ?? [];
 
         return array_values(array_filter([
-            $l->area_value ? Format::num($l->area_value, fmod((float) $l->area_value, 1) ? 2 : 0).' '.$l->area_unit : null,
-            isset($d['water_source']) && $d['water_source'] !== 'none' ? ucfirst($d['water_source']) : null,
-            ! empty($d['eb_connection']) ? 'EB connection' : null,
+            $l->area_value ? Format::num($l->area_value, fmod((float) $l->area_value, 1) ? 2 : 0).' '.__($l->area_unit) : null,
+            isset($d['water_source']) && $d['water_source'] !== 'none' ? __(ucfirst($d['water_source'])) : null,
+            ! empty($d['eb_connection']) ? __('EB connection') : null,
         ]));
     }
 }

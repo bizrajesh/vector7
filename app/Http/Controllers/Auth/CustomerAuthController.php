@@ -44,7 +44,7 @@ class CustomerAuthController extends Controller
             'mobile' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'password' => Passwords::rules(),
             'terms' => ['accepted'],
-        ], Passwords::messages() + ['mobile.regex' => 'Enter a 10-digit mobile number.']);
+        ], Passwords::messages() + ['mobile.regex' => __('Enter a 10-digit mobile number.')]);
         $c = Customer::create([
             'name' => $data['name'],
             'email' => strtolower($data['email']),
@@ -54,7 +54,7 @@ class CustomerAuthController extends Controller
         Auth::guard('customer')->login($c);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('account.dashboard'))->with('ok', 'Welcome to vector7! Your account is ready.');
+        return redirect()->intended(route('account.dashboard'))->with('ok', __('Welcome to vector7! Your account is ready.'));
     }
 
     public function logout(Request $request)
@@ -76,7 +76,7 @@ class CustomerAuthController extends Controller
         $request->validate(['email' => ['required', 'email']]);
         Password::broker('customers')->sendResetLink(['email' => strtolower($request->email)]);
 
-        return back()->with('ok', 'If that email belongs to an account, a reset link is on its way. The link is valid for 60 minutes.');
+        return back()->with('ok', __('If that email belongs to an account, a reset link is on its way. The link is valid for 60 minutes.'));
     }
 
     public function showReset(Request $request, string $token)
@@ -97,7 +97,7 @@ class CustomerAuthController extends Controller
         );
 
         return $status === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('ok', 'Password changed. Please sign in.')
+            ? redirect()->route('login')->with('ok', __('Password changed. Please sign in.'))
             : back()->withErrors(['email' => __($status)]);
     }
 
@@ -111,12 +111,12 @@ class CustomerAuthController extends Controller
         $request->validate(['password' => Passwords::rules()], Passwords::messages());
         $c = $request->user('customer');
         if (Hash::check($request->password, $c->password)) {
-            return back()->withErrors(['password' => 'Choose a new password, different from the generated one.']);
+            return back()->withErrors(['password' => __('Choose a new password, different from the generated one.')]);
         }
         $c->forceFill(['password' => $request->password, 'must_change_password' => false])->saveQuietly();
         Auth::guard('customer')->login($c);
         $request->session()->regenerate();
 
-        return redirect()->route('account.dashboard')->with('ok', 'Your new password is saved.');
+        return redirect()->route('account.dashboard')->with('ok', __('Your new password is saved.'));
     }
 }

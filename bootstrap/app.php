@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (MiddlewareConfig $middleware): void {
-        $middleware->web(append: [Middleware\SecurityHeaders::class]);
+        $middleware->web(append: [Middleware\SetMarketLocale::class, Middleware\SecurityHeaders::class]);
         $middleware->alias([
             'staff' => Middleware\EnsureStaff::class,
             'appuser' => Middleware\EnsureAppUser::class,
@@ -26,9 +26,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(\Illuminate\Routing\Middleware\SubstituteBindings::class, Middleware\EnsureTenantUser::class);
         $middleware->validateCsrfTokens(except: ['webhooks/*']);
         $middleware->trustProxies(at: '*');
-        $middleware->redirectGuestsTo(fn (Request $r) => $r->is('workspace*', 'app', 'app/*', 'files/*', 'profile*') ? route('staff.login') : route('login'));
+        $middleware->redirectGuestsTo(fn (Request $r) => match (true) {
+            $r->is('app', 'app/*') => route('app.login'),
+            $r->is('workspace*', 'files/*', 'profile*') => route('staff.login'),
+            default => route('login'),
+        });
         $middleware->redirectUsersTo(function (Request $r) {
-            if ($r->user('web') && $r->is('workspace*')) {
+            if ($r->user('web') && $r->is('workspace*', 'app/*')) {
                 return $r->user('web')->homeRoute();
             }
 

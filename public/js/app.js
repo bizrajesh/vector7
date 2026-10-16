@@ -18,6 +18,15 @@
   }
   window.v7inr = inr;
 
+  /* ---------- Translations for marketplace pages (English / Tamil), from <script id="v7-i18n"> ---------- */
+  var I18N = null;
+  function T(key, params) {
+    if (I18N === null) { try { I18N = JSON.parse(document.getElementById('v7-i18n').textContent) || {}; } catch (e) { I18N = {}; } }
+    var out = I18N[key] || key;
+    Object.keys(params || {}).forEach(function (p) { out = out.split(':' + p).join(params[p]); });
+    return out;
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -49,7 +58,7 @@
   function initDropdowns() {
     $$('[data-copy-link]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = 'Copied'; setTimeout(function () { b.innerHTML = t; }, 1500); };
+        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = T('Copied'); setTimeout(function () { b.innerHTML = t; }, 1500); };
         if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done, function () { alertBox(url); }); } else { alertBox(url); }
       });
     });
@@ -150,7 +159,7 @@
       btn.addEventListener('click', function () {
         var el = document.getElementById(btn.getAttribute('data-copy'));
         var text = el ? (el.value || el.textContent) : '';
-        var ok = function () { var t = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = t; }, 1500); };
+        var ok = function () { var t = btn.textContent; btn.textContent = T('Copied'); setTimeout(function () { btn.textContent = t; }, 1500); };
         if (navigator.clipboard) { navigator.clipboard.writeText(text.trim()).then(ok); }
         else { var r = document.createRange(); r.selectNodeContents(el); var s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy'); ok(); }
       });
@@ -651,7 +660,7 @@
             if (!res.ok) {
               if (win) win.close();
               if (res.status === 422 && res.j.errors && !withForm) { known = false; form.classList.remove('hidden'); pending = mode; return; }
-              var msg = res.status === 429 ? 'Too many requests — please try again in a minute.' : ((res.j.errors && Object.values(res.j.errors)[0][0]) || res.j.message || 'Something went wrong.');
+              var msg = res.status === 429 ? T('Too many requests — please try again in a minute.') : ((res.j.errors && Object.values(res.j.errors)[0][0]) || res.j.message || 'Something went wrong.');
               if (err) { err.textContent = msg; err.classList.remove('hidden'); } else { alertBox(msg); }
               return;
             }
@@ -660,7 +669,7 @@
             if (mode === 'call') { window.location.href = res.j.tel; }
             if (mode === 'whatsapp') { if (win) { win.location.href = res.j.whatsapp; } else { window.location.href = res.j.whatsapp; } }
           })
-          .catch(function () { if (win) win.close(); alertBox('Could not reach the server. Please try again.'); });
+          .catch(function () { if (win) win.close(); alertBox(T('Could not reach the server. Please try again.')); });
       };
       $$('[data-contact-mode]', box).forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -710,7 +719,7 @@
     }
     $$('[data-copy-link]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = 'Copied'; setTimeout(function () { b.innerHTML = t; }, 1500); };
+        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = T('Copied'); setTimeout(function () { b.innerHTML = t; }, 1500); };
         if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done, function () { alertBox(url); }); } else { alertBox(url); }
       });
     });
@@ -735,8 +744,8 @@
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
       };
       var errText = function (res) {
-        if (res.status === 429) return 'You are sending messages too fast — please wait a minute.';
-        return (res.j && res.j.errors && Object.values(res.j.errors)[0][0]) || (res.j && res.j.message) || 'Something went wrong. Please try again.';
+        if (res.status === 429) return T('You are sending messages too fast — please wait a minute.');
+        return (res.j && res.j.errors && Object.values(res.j.errors)[0][0]) || (res.j && res.j.message) || T('Something went wrong. Please try again.');
       };
       var scroll = function () { log.scrollTop = log.scrollHeight; };
       var bubble = function (role, text) {
@@ -761,19 +770,19 @@
         var w = document.createElement('div'); w.className = 'overflow-x-auto rounded-xl bg-white ring-1 ring-navy-50';
         var links = t.links || [];
         w.innerHTML = (t.title ? '<p class="px-2 pt-2 text-xs font-bold">' + esc(t.title) + '</p>' : '') + '<table class="w-full text-xs"><thead><tr>' + t.columns.map(function (c) { return '<th class="px-2 py-1 text-left">' + esc(c) + '</th>'; }).join('') + (links.length ? '<th></th>' : '') + '</tr></thead><tbody>' +
-          t.rows.map(function (r, i) { return '<tr class="border-t border-navy-50">' + r.map(function (v) { return '<td class="px-2 py-1">' + esc(v) + '</td>'; }).join('') + (links.length ? '<td class="px-2 py-1">' + (links[i] ? '<a href="' + esc(links[i]) + '">Open</a>' : '') + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table>' +
-          (t.export ? '<a class="block px-2 py-1 text-xs font-semibold" href="' + esc(t.export) + '">Download Excel</a>' : '');
+          t.rows.map(function (r, i) { return '<tr class="border-t border-navy-50">' + r.map(function (v) { return '<td class="px-2 py-1">' + esc(v) + '</td>'; }).join('') + (links.length ? '<td class="px-2 py-1">' + (links[i] ? '<a href="' + esc(links[i]) + '">' + esc(T('Open')) + '</a>' : '') + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table>' +
+          (t.export ? '<a class="block px-2 py-1 text-xs font-semibold" href="' + esc(t.export) + '">' + esc(T('Download Excel')) + '</a>' : '');
         log.appendChild(w); scroll();
       };
       var action = function (a) {
         if (!a) return;
         var box = document.createElement('div'); box.className = 'rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200';
         if (a.type === 'create_lead') {
-          box.innerHTML = '<p class="font-semibold">Share your details with the owner of ' + esc(a.title) + '?</p>' +
-            '<label class="mt-2 block text-xs">Your name<input name="name" class="input mt-1" maxlength="100" required value="' + esc(a.name || '') + '"></label>' +
-            '<label class="mt-2 block text-xs">Mobile<input name="mobile" class="input mt-1" inputmode="numeric" maxlength="10" required value="' + esc(a.mobile || '') + '"></label>' +
-            '<label class="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" name="consent" class="checkbox mt-0.5"> I agree to share my name and mobile with the owner so they can contact me.</label>' +
-            '<p class="error hidden" data-err></p><button type="button" class="btn-primary btn-sm mt-2">Share and ask to call me</button>';
+          box.innerHTML = '<p class="font-semibold">' + esc(T('Share your details with the owner of :title?', { title: a.title })) + '</p>' +
+            '<label class="mt-2 block text-xs">' + esc(T('Your name')) + '<input name="name" class="input mt-1" maxlength="100" required value="' + esc(a.name || '') + '"></label>' +
+            '<label class="mt-2 block text-xs">' + esc(T('Mobile')) + '<input name="mobile" class="input mt-1" inputmode="numeric" maxlength="10" required value="' + esc(a.mobile || '') + '"></label>' +
+            '<label class="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" name="consent" class="checkbox mt-0.5"> ' + esc(T('I agree to share my name and mobile with the owner so they can contact me.')) + '</label>' +
+            '<p class="error hidden" data-err></p><button type="button" class="btn-primary btn-sm mt-2">' + esc(T('Share and ask to call me')) + '</button>';
           $('button', box).addEventListener('click', function () {
             var body = { key: a.key, note: a.note || '', name: $('[name=name]', box).value, mobile: $('[name=mobile]', box).value, consent: $('[name=consent]', box).checked ? 1 : 0 };
             post(root.getAttribute('data-consent'), body).then(function (res) {
@@ -783,24 +792,24 @@
           });
         } else if (a.type === 'draft') {
           box.innerHTML = '<p class="text-xs font-semibold">' + esc(a.label || 'Draft') + '</p><textarea class="input mt-1 h-32 text-xs">' + esc(a.text) + '</textarea>' +
-            '<div class="mt-2 flex gap-2"><button type="button" class="btn-light btn-sm" data-copy>Copy</button>' + (a.apply ? '<button type="button" class="btn-primary btn-sm" data-apply>Apply to field</button>' : '') + (a.apply_url ? '<a class="btn-primary btn-sm" href="' + esc(a.apply_url) + '">' + esc(a.apply_label || 'Open') + '</a>' : '') + '</div>';
+            '<div class="mt-2 flex gap-2"><button type="button" class="btn-light btn-sm" data-copy>' + esc(T('Copy')) + '</button>' + (a.apply ? '<button type="button" class="btn-primary btn-sm" data-apply>' + esc(T('Apply to field')) + '</button>' : '') + (a.apply_url ? '<a class="btn-primary btn-sm" href="' + esc(a.apply_url) + '">' + esc(a.apply_label || 'Open') + '</a>' : '') + '</div>';
           $('[data-copy]', box).addEventListener('click', function () { var t = $('textarea', box); t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } });
           var ap = $('[data-apply]', box);
           if (ap) ap.addEventListener('click', function () {
-            if (!lastField || !document.body.contains(lastField)) { alertBox('Click the text box on the page you want to fill, then press Apply again.'); return; }
+            if (!lastField || !document.body.contains(lastField)) { alertBox(T('Click the text box on the page you want to fill, then press Apply again.')); return; }
             lastField.value = $('textarea', box).value; lastField.dispatchEvent(new Event('input', { bubbles: true })); lastField.focus();
           });
         } else if (a.type === 'link') {
           box.innerHTML = '<a class="btn-primary btn-sm" href="' + esc(a.url) + '">' + esc(a.label) + '</a>';
         } else if (a.type === 'confirm') {
-          box.innerHTML = '<p class="text-sm">' + esc(a.summary) + '</p><div class="mt-2 flex gap-2"><button type="button" class="btn-primary btn-sm" data-yes>Confirm</button><button type="button" class="btn-ghost btn-sm" data-no>Cancel</button></div><p class="error hidden" data-err></p>';
+          box.innerHTML = '<p class="text-sm">' + esc(a.summary) + '</p><div class="mt-2 flex gap-2"><button type="button" class="btn-primary btn-sm" data-yes>' + esc(T('Confirm')) + '</button><button type="button" class="btn-ghost btn-sm" data-no>' + esc(T('Cancel')) + '</button></div><p class="error hidden" data-err></p>';
           $('[data-yes]', box).addEventListener('click', function () {
             post(a.url, a.payload || {}).then(function (res) {
               if (!res.ok) { var e = $('[data-err]', box); e.textContent = errText(res); e.classList.remove('hidden'); return; }
-              box.remove(); bubble('assistant', res.j.text || 'Done.');
+              box.remove(); bubble('assistant', res.j.text || T('Done.'));
             });
           });
-          $('[data-no]', box).addEventListener('click', function () { box.remove(); bubble('assistant', 'Cancelled — nothing was changed.'); });
+          $('[data-no]', box).addEventListener('click', function () { box.remove(); bubble('assistant', T('Cancelled — nothing was changed.')); });
         }
         log.appendChild(box); scroll();
       };
@@ -810,7 +819,7 @@
         fetch(root.getAttribute('data-history'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
           if (j.greeting) bubble('assistant', j.greeting);
           (j.messages || []).forEach(render);
-        }).catch(function () { bubble('assistant', 'The assistant is not available right now.'); });
+        }).catch(function () { bubble('assistant', T('The assistant is not available right now.')); });
       };
       var key = 'v7chat-open-' + root.getAttribute('data-bot');
       var remember = function (on) { try { on ? sessionStorage.setItem(key, '1') : sessionStorage.removeItem(key); } catch (e) { /* storage blocked */ } };
@@ -830,7 +839,7 @@
           wait.remove();
           if (!res.ok) { bubble('assistant', errText(res)); return; }
           render({ role: 'assistant', text: res.j.text, cards: res.j.cards, table: res.j.table, action: res.j.action });
-        }).catch(function () { wait.remove(); bubble('assistant', 'Could not reach the server.'); }).finally(function () { busy = false; });
+        }).catch(function () { wait.remove(); bubble('assistant', T('Could not reach the server.')); }).finally(function () { busy = false; });
       });
     });
   }

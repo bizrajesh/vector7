@@ -33,7 +33,7 @@ class TicketController extends Controller
         ]);
         $t = TicketService::open($request->user('customer'), $data + ['priority' => 'medium'], $request->file('file'));
 
-        return redirect()->route('account.tickets.show', $t->id)->with('ok', "Ticket {$t->number} opened. We'll reply by email.");
+        return redirect()->route('account.tickets.show', $t->id)->with('ok', __('Ticket :no opened. We will reply by email.', ['no' => $t->number]));
     }
 
     public function show(Request $request, int $ticket)
@@ -49,7 +49,7 @@ class TicketController extends Controller
         $data = $request->validate(['body' => 'required|string|max:5000', 'file' => FileStore::rules('document', 5120, false)]);
         app(Tenancy::class)->withoutScope(fn () => TicketService::addMessage($t, $request->user('customer'), $data['body'], $request->file('file')));
 
-        return back()->with('ok', 'Reply sent.');
+        return back()->with('ok', __('Reply sent.'));
     }
 
     public function requestService(Request $request, Service $service)
@@ -58,6 +58,6 @@ class TicketController extends Controller
         $data = $request->validate(['notes' => 'required|string|max:3000']);
         $sr = TicketService::requestService($service, $request->user('customer'), $data['notes'], null);
 
-        return redirect()->route('account.tickets.show', $sr->ticket_id)->with('ok', 'Service requested. Our team will contact you.');
+        return redirect()->route('account.tickets.show', $sr->ticket_id)->with('ok', __('Service requested. Our team will contact you.'));
     }
 }

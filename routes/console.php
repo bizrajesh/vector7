@@ -65,7 +65,7 @@ Artisan::command('v7:app-admin {email? : Defaults to APP_ADMIN_EMAIL} {--passwor
     $user ??= new \App\Models\User(['email' => $email, 'name' => env('APP_ADMIN_NAME', 'Vector7 Admin'), 'tenant_id' => null]);
     $user->forceFill(['role_id' => $role->id, 'password' => $password, 'is_active' => true, 'must_change_password' => false, 'failed_logins' => 0, 'locked_until' => null])->save();
     \App\Services\AuditLogger::log('app_admin_reset_cli', $user, null, ['email' => $email]);
-    $this->info("App Admin ready: $email — sign in at ".rtrim((string) config('app.url'), '/').'/workspace/login');
+    $this->info("App Admin ready: $email — sign in at ".rtrim((string) config('app.url'), '/').'/app/login');
 
     return 0;
 })->purpose('Create or reset the App Admin (Super Admin) login');

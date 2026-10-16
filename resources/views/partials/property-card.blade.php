@@ -3,7 +3,7 @@
     $layout = $layout ?? 'grid';
     $on = isset($shortlisted[$item['key']]);
     $href = $item['url'].(($src ?? null) === 'ai' ? '?src=ai' : '');
-    $priceLabel = ($item['price_from'] ? 'From ' : '');
+    $priceLabel = ($item['price_from'] ? __('From').' ' : '');
 @endphp
 <article class="card group relative flex overflow-hidden transition hover:shadow-lift {{ $layout === 'list' ? 'flex-col sm:flex-row' : 'flex-col' }}" data-card="{{ $item['key'] }}">
     <a href="{{ $href }}" class="relative block shrink-0 bg-page {{ $layout === 'list' ? 'sm:w-72' : '' }}" tabindex="-1" aria-hidden="true">
@@ -13,11 +13,11 @@
             <span class="flex aspect-[4/3] w-full items-center justify-center text-navy-100"><x-icon name="building" class="h-12 w-12" /></span>
         @endif
         <span class="absolute left-2 top-2 flex flex-wrap gap-1">
-            <span class="rounded-md bg-white/95 px-2 py-0.5 text-xs font-bold text-navy">{{ $item['kind'] === 'layout' ? 'Layout' : $item['type_label'] }}</span>
-            @if ($item['offer_active'])<span class="rounded-md bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">Offer</span>@endif
-            @if ($item['featured'])<span class="rounded-md bg-gold px-2 py-0.5 text-xs font-bold text-navy">Featured</span>@endif
+            <span class="rounded-md bg-white/95 px-2 py-0.5 text-xs font-bold text-navy">{{ $item['kind'] === 'layout' ? __('Layout') : $item['type_label'] }}</span>
+            @if ($item['offer_active'])<span class="rounded-md bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">{{ __('Offer') }}</span>@endif
+            @if ($item['featured'])<span class="rounded-md bg-gold px-2 py-0.5 text-xs font-bold text-navy">{{ __('Featured') }}</span>@endif
         </span>
-        @if ($item['image_count'] > 1)<span class="absolute bottom-2 right-2 rounded-md bg-navy/80 px-2 py-0.5 text-xs text-white">{{ $item['image_count'] }} photos</span>@endif
+        @if ($item['image_count'] > 1)<span class="absolute bottom-2 right-2 rounded-md bg-navy/80 px-2 py-0.5 text-xs text-white">{{ trans_choice(':count photo|:count photos', $item['image_count']) }}</span>@endif
     </a>
     <div class="flex min-w-0 flex-1 flex-col p-4">
         <div class="flex items-start justify-between gap-2">
@@ -40,19 +40,19 @@
         </p>
         @if ($item['specs'])<p class="mt-1 text-sm">{{ implode(' · ', $item['specs']) }}</p>@endif
         @if ($item['features'])
-            <div class="mt-2 flex flex-wrap gap-1">@foreach ($item['features'] as $f)<span class="chip chip-sm"><x-icon :name="$f['icon']" class="h-3.5 w-3.5" /> {{ $f['name'] }}</span>@endforeach</div>
+            <div class="mt-2 flex flex-wrap gap-1">@foreach ($item['features'] as $f)<span class="chip chip-sm"><x-icon :name="$f['icon']" class="h-3.5 w-3.5" /> {{ __($f['name']) }}</span>@endforeach</div>
         @endif
         @if (! empty($item['why']))<p class="mt-2 rounded-lg bg-teal-50 px-2 py-1 text-xs text-teal-900"><x-icon name="sparkles" class="mr-1 inline h-3.5 w-3.5" />{{ $item['why'] }}</p>@endif
         @if ($item['modes'])
             <div class="relative z-10 mt-3 flex flex-wrap gap-1.5">
-                @if (in_array('call', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="Call about {{ $item['title'] }}"><x-icon name="phone" class="h-3.5 w-3.5" /> Call</a>@endif
-                @if (in_array('whatsapp', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="WhatsApp about {{ $item['title'] }}"><x-icon name="chat" class="h-3.5 w-3.5" /> WhatsApp</a>@endif
-                @if (in_array('email', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="Enquire about {{ $item['title'] }}"><x-icon name="mail" class="h-3.5 w-3.5" /> Enquire</a>@endif
+                @if (in_array('call', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="{{ __('Call about :name', ['name' => $item['title']]) }}"><x-icon name="phone" class="h-3.5 w-3.5" /> {{ __('Call') }}</a>@endif
+                @if (in_array('whatsapp', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="{{ __('WhatsApp about :name', ['name' => $item['title']]) }}"><x-icon name="chat" class="h-3.5 w-3.5" /> {{ __('WhatsApp') }}</a>@endif
+                @if (in_array('email', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="{{ __('Enquire about :name', ['name' => $item['title']]) }}"><x-icon name="mail" class="h-3.5 w-3.5" /> {{ __('Enquire') }}</a>@endif
             </div>
         @endif
         <div class="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-muted">
             <span>@if ($item['approved'])<span class="font-semibold text-teal-800"><x-icon name="shield" class="inline h-3.5 w-3.5" /> {{ $item['badge'] }}</span>@else{{ $item['promoter'] }}@endif</span>
-            <label class="relative z-10 inline-flex items-center gap-1"><input type="checkbox" class="checkbox" value="{{ $item['key'] }}" data-compare> Compare</label>
+            <label class="relative z-10 inline-flex items-center gap-1"><input type="checkbox" class="checkbox" value="{{ $item['key'] }}" data-compare> {{ __('Compare') }}</label>
         </div>
     </div>
 </article>

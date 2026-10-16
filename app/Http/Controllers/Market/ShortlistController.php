@@ -30,7 +30,7 @@ class ShortlistController extends Controller
             $row->delete();
             $on = false;
         } else {
-            abort_if(CustomerShortlist::where('customer_id', $customer->id)->count() >= 100, 422, 'Your shortlist is full (100).');
+            abort_if(CustomerShortlist::where('customer_id', $customer->id)->count() >= 100, 422, __('Your shortlist is full (100).'));
             CustomerShortlist::create(['customer_id' => $customer->id, $col => $id]);
             $on = true;
         }
@@ -38,7 +38,7 @@ class ShortlistController extends Controller
             return response()->json(['on' => $on]);
         }
 
-        return back()->with('ok', $on ? 'Added to your shortlist.' : 'Removed from your shortlist.');
+        return back()->with('ok', $on ? __('Added to your shortlist.') : __('Removed from your shortlist.'));
     }
 
     public function index()
@@ -57,7 +57,7 @@ class ShortlistController extends Controller
         $keys = array_slice(array_values(array_unique(array_filter(explode(',', (string) $request->query('keys'))))), 0, self::MAX_COMPARE);
         $items = $this->items($keys);
 
-        return view('market.compare', ['items' => $items, 'seo' => ['title' => 'Compare properties', 'description' => 'Side-by-side comparison of properties on vector7.', 'robots' => 'noindex,follow']]);
+        return view('market.compare', ['items' => $items, 'seo' => ['title' => __('Compare properties'), 'description' => __('Side-by-side comparison of properties on vector7.'), 'robots' => 'noindex,follow']]);
     }
 
     public function toggleAlerts(SavedSearch $search)
@@ -65,7 +65,7 @@ class ShortlistController extends Controller
         abort_unless($search->customer_id === auth('customer')->id(), 404);
         $search->update(['alerts' => ! $search->alerts]);
 
-        return back()->with('ok', $search->alerts ? 'Email alerts on.' : 'Email alerts off.');
+        return back()->with('ok', $search->alerts ? __('Email alerts on.') : __('Email alerts off.'));
     }
 
     public function destroySearch(SavedSearch $search)
@@ -73,7 +73,7 @@ class ShortlistController extends Controller
         abort_unless($search->customer_id === auth('customer')->id(), 404);
         $search->delete();
 
-        return back()->with('ok', 'Saved search deleted.');
+        return back()->with('ok', __('Saved search deleted.'));
     }
 
     /** Buyers can share a testimonial; it shows on the home page after App moderation. */
@@ -81,10 +81,10 @@ class ShortlistController extends Controller
     {
         $customer = auth('customer')->user();
         $data = $request->validate(['body' => 'required|string|min:20|max:1000', 'place' => 'nullable|string|max:100', 'rating' => 'nullable|integer|min:1|max:5']);
-        abort_if(Testimonial::where('customer_id', $customer->id)->where('created_at', '>', now()->subDays(30))->exists(), 422, 'You have already shared a testimonial this month — thank you!');
+        abort_if(Testimonial::where('customer_id', $customer->id)->where('created_at', '>', now()->subDays(30))->exists(), 422, __('You have already shared a testimonial this month — thank you!'));
         Testimonial::create($data + ['customer_id' => $customer->id, 'name' => $customer->name, 'status' => 'pending']);
 
-        return back()->with('ok', 'Thank you! Your testimonial will appear once our team has reviewed it.');
+        return back()->with('ok', __('Thank you! Your testimonial will appear once our team has reviewed it.'));
     }
 
     /** Cards for a list of keys (only live items; order kept). */
@@ -120,7 +120,7 @@ class ShortlistController extends Controller
         if (preg_match('/^([LP]):(\d+)$/', $key, $m)) {
             return [$m[1], (int) $m[2]];
         }
-        abort_if($strict, 422, 'Unknown property.');
+        abort_if($strict, 422, __('Unknown property.'));
 
         return [null, null];
     }

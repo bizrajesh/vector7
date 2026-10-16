@@ -30,7 +30,7 @@ class ListingController extends Controller
 
             return response()->view('market.listing-gone', [
                 'listing' => $listing, 'similar' => PropertySearch::similar($item, 6),
-                'seo' => ['title' => $listing->title.' – no longer available', 'description' => 'This property is no longer available. See similar properties on vector7.', 'noindex' => true],
+                'seo' => ['title' => __(':title – no longer available', ['title' => $listing->title]), 'description' => __('This property is no longer available. See similar properties on vector7.'), 'noindex' => true],
             ], 410);
         }
         abort_unless($listing->isLive(), 404);
@@ -97,7 +97,7 @@ class ListingController extends Controller
                 'customer_id' => auth('customer')->id(), 'reason' => $data['reason'], 'details' => $data['details'] ?? null, 'ip_hash' => $ipHash]));
         }
 
-        return back()->with('ok', 'Thank you — the vector7 team will review this listing.');
+        return back()->with('ok', __('Thank you — the vector7 team will review this listing.'));
     }
 
     public static function typeSlug(string $type): string

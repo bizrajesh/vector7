@@ -11,7 +11,7 @@ module.exports = {
         muted: { DEFAULT: '#5B6677', light: '#929CAA' },
         page: '#EEF1F4',
       },
-      fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      fontFamily: { sans: ['"Plus Jakarta Sans"', '"Noto Sans Tamil"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
       borderRadius: { card: '12px' },
       boxShadow: {
         card: '0 1px 2px rgba(11,27,51,.06), 0 4px 16px rgba(11,27,51,.06)',

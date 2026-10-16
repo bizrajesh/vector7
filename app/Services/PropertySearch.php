@@ -32,6 +32,17 @@ class PropertySearch
 
     public const FACINGS = ['East', 'West', 'North', 'South', 'North-East', 'North-West', 'South-East', 'South-West'];
 
+    public const FURNISHING = ['unfurnished' => 'Unfurnished', 'semi' => 'Semi-furnished', 'full' => 'Fully furnished'];
+
+    public const WATER = ['borewell' => 'Borewell', 'canal' => 'Canal', 'well' => 'Open well'];
+
+    public const SUB_TYPES = ['shop' => 'Shop', 'office' => 'Office', 'showroom' => 'Showroom', 'warehouse' => 'Warehouse'];
+
+    public const AUTHORITIES = ['DTCP' => 'DTCP', 'BDO' => 'BDO / Panchayat Union', 'CMDA' => 'CMDA', 'LPA' => 'Local Planning Authority', 'Municipality' => 'Municipality / Corporation', 'RERA' => 'TNRERA'];
+
+    /** Types that can be rented (spec 17.2). */
+    public const RENT_TYPES = ['flat', 'house', 'villa', 'commercial'];
+
     public const SORTS = ['relevance' => 'Relevance', 'price_asc' => 'Price: low to high', 'price_desc' => 'Price: high to low', 'newest' => 'Newest', 'area_desc' => 'Area: largest'];
 
     // ------------------------------------------------------------------ filters
@@ -56,6 +67,11 @@ class PropertySearch
             'approved' => ! empty($q['approved']),
             'offer' => ! empty($q['offer']),
             'wishes' => $arr($q['wish'] ?? []),
+            'furnishing' => $q['furnishing'] ?? null,
+            'water' => $q['water'] ?? null,
+            'sub_type' => $q['sub_type'] ?? null,
+            'authority' => $q['authority'] ?? null,
+            'corner' => ! empty($q['corner']),
         ]);
     }
 
@@ -79,6 +95,11 @@ class PropertySearch
             'approved' => (bool) ($f['approved'] ?? false),
             'offer' => (bool) ($f['offer'] ?? false),
             'wishes' => self::strings($f['wishes'] ?? [], 5),
+            'furnishing' => array_key_exists((string) ($f['furnishing'] ?? ''), self::FURNISHING) ? $f['furnishing'] : null,
+            'water' => array_key_exists((string) ($f['water'] ?? ''), self::WATER) ? $f['water'] : null,
+            'sub_type' => array_key_exists((string) ($f['sub_type'] ?? ''), self::SUB_TYPES) ? $f['sub_type'] : null,
+            'authority' => array_key_exists((string) ($f['authority'] ?? ''), self::AUTHORITIES) ? $f['authority'] : null,
+            'corner' => (bool) ($f['corner'] ?? false),
         ];
         if ($out['budget_min'] && $out['budget_max'] && $out['budget_min'] > $out['budget_max']) {
             [$out['budget_min'], $out['budget_max']] = [$out['budget_max'], $out['budget_min']];
@@ -101,6 +122,8 @@ class PropertySearch
             'area_min' => $f['area_min'] ? (int) $f['area_min'] : null, 'area_max' => $f['area_max'] ? (int) $f['area_max'] : null,
             'bhk' => $f['bhk_min'], 'bhk_max' => $f['bhk_max'], 'facing' => $f['facing'], 'feature' => $f['features'] ?: null,
             'approved' => $f['approved'] ? 1 : null, 'offer' => $f['offer'] ? 1 : null, 'wish' => $f['wishes'] ?: null,
+            'furnishing' => $f['furnishing'] ?? null, 'water' => $f['water'] ?? null, 'sub_type' => $f['sub_type'] ?? null,
+            'authority' => $f['authority'] ?? null, 'corner' => ! empty($f['corner']) ? 1 : null,
         ], fn ($v) => $v !== null && $v !== '');
     }
 
@@ -122,22 +145,22 @@ class PropertySearch
 
             return $c;
         };
-        $typeLabels = ['layout' => 'Layouts & plots'] + collect(ListingTypes::all())->map->plural()->all();
+        $typeLabels = ['layout' => __('Layouts & plots')] + collect(ListingTypes::all())->map(fn ($t) => __($t->plural()))->all();
         foreach ($f['types'] as $t) {
             $chips[] = [$typeLabels[$t] ?? $t, $without('type', $t)];
         }
         if ($f['purpose']) {
-            $chips[] = [$f['purpose'] === 'rent' ? 'For rent' : 'For sale', $without('purpose')];
+            $chips[] = [$f['purpose'] === 'rent' ? __('For rent') : __('For sale'), $without('purpose')];
         }
         foreach ($f['places'] as $p) {
-            $chips[] = ['Near '.$p, $without('place', $p)];
+            $chips[] = [__('Near :place', ['place' => $p]), $without('place', $p)];
         }
         if ($f['nearby']) {
-            $chips[] = ['+ nearby: '.implode(', ', array_slice($f['nearby'], 0, 3)).(count($f['nearby']) > 3 ? '…' : ''), $without('nearby')];
+            $chips[] = [__('+ nearby: :places', ['places' => implode(', ', array_slice($f['nearby'], 0, 3)).(count($f['nearby']) > 3 ? '…' : '')]), $without('nearby')];
         }
         if ($f['budget_min'] || $f['budget_max']) {
             $label = $f['budget_min'] && $f['budget_max'] ? Format::inrShort($f['budget_min']).' – '.Format::inrShort($f['budget_max'])
-                : ($f['budget_max'] ? 'Under '.Format::inrShort($f['budget_max']) : 'Above '.Format::inrShort($f['budget_min']));
+                : ($f['budget_max'] ? __('Under :amount', ['amount' => Format::inrShort($f['budget_max'])]) : __('Above :amount', ['amount' => Format::inrShort($f['budget_min'])]));
             $c = $q;
             unset($c['budget_min'], $c['budget_max']);
             $chips[] = [$label, $c];
@@ -145,7 +168,7 @@ class PropertySearch
         if ($f['area_min'] || $f['area_max']) {
             $c = $q;
             unset($c['area_min'], $c['area_max']);
-            $chips[] = [($f['area_min'] ? Format::num($f['area_min']) : '0').' – '.($f['area_max'] ? Format::num($f['area_max']) : 'any').' sq ft', $c];
+            $chips[] = [($f['area_min'] ? Format::num($f['area_min']) : '0').' – '.($f['area_max'] ? Format::num($f['area_max']) : __('any')).' '.__('sq ft'), $c];
         }
         if ($f['bhk_min']) {
             $c = $q;
@@ -153,16 +176,24 @@ class PropertySearch
             $chips[] = [$f['bhk_min'].($f['bhk_max'] && $f['bhk_max'] !== $f['bhk_min'] ? '–'.$f['bhk_max'] : '').' BHK', $c];
         }
         if ($f['facing']) {
-            $chips[] = [$f['facing'].' facing', $without('facing')];
+            $chips[] = [__(':facing facing', ['facing' => __($f['facing'])]), $without('facing')];
         }
         foreach ($f['features'] as $x) {
-            $chips[] = [$x, $without('feature', $x)];
+            $chips[] = [__($x), $without('feature', $x)];
         }
         if ($f['approved']) {
-            $chips[] = ['Approved only', $without('approved')];
+            $chips[] = [__('Approved only'), $without('approved')];
         }
         if ($f['offer']) {
-            $chips[] = ['On offer', $without('offer')];
+            $chips[] = [__('On offer'), $without('offer')];
+        }
+        foreach (['furnishing' => self::FURNISHING, 'water' => self::WATER, 'sub_type' => self::SUB_TYPES, 'authority' => self::AUTHORITIES] as $k => $opts) {
+            if (! empty($f[$k])) {
+                $chips[] = [__($opts[$f[$k]] ?? $f[$k]), $without($k)];
+            }
+        }
+        if (! empty($f['corner'])) {
+            $chips[] = [__('Corner plots'), $without('corner')];
         }
         foreach ($f['wishes'] as $w) {
             $chips[] = ['“'.$w.'”', $without('wish', $w)];
@@ -200,23 +231,23 @@ class PropertySearch
         if ($f['budget_max'] || $f['budget_min']) {
             $f['budget_max'] = $f['budget_max'] ? round($f['budget_max'] * 1.1) : null;
             $f['budget_min'] = $f['budget_min'] ? round($f['budget_min'] * 0.9) : null;
-            yield ['Budget widened by 10%', $f];
+            yield [__('Budget widened by 10%'), $f];
         }
         if ($f['places']) {
             $near = self::nearbyDistricts($f['places']);
             $add = array_values(array_diff($near, $f['nearby'], $f['places']));
             if ($add) {
                 $f['nearby'] = array_values(array_unique(array_merge($f['nearby'], $add)));
-                yield ['Included nearby districts ('.implode(', ', array_slice($add, 0, 4)).(count($add) > 4 ? '…' : '').')', $f];
+                yield [__('Included nearby districts (:list)', ['list' => implode(', ', array_slice($add, 0, 4)).(count($add) > 4 ? '…' : '')]), $f];
             }
         }
         while ($f['wishes']) {
             $dropped = array_pop($f['wishes']);
-            yield ['Dropped the wish “'.$dropped.'”', $f];
+            yield [__('Dropped the wish “:wish”', ['wish' => $dropped]), $f];
         }
         if ($f['features']) {
             $f['features'] = [];
-            yield ['Ignored the feature filters', $f];
+            yield [__('Ignored the feature filters'), $f];
         }
     }
 
@@ -244,8 +275,9 @@ class PropertySearch
     {
         return app(Tenancy::class)->withoutScope(function () use ($f, $sort, $limit) {
             $types = $f['types'];
-            $wantListings = ! $types || array_diff($types, ['layout']);
-            $wantLayouts = (! $types || array_intersect($types, ['layout', 'plot'])) && $f['purpose'] !== 'rent' && ! $f['bhk_min'];
+            $wantListings = (! $types || array_diff($types, ['layout'])) && empty($f['authority']);
+            $wantLayouts = (! $types || array_intersect($types, ['layout', 'plot'])) && $f['purpose'] !== 'rent' && ! $f['bhk_min']
+                && empty($f['furnishing']) && empty($f['water']) && empty($f['sub_type']);
             $items = collect();
             if ($wantListings) {
                 $items = $items->merge(self::listings($f));
@@ -299,6 +331,10 @@ class PropertySearch
             ->when($f['bhk_min'], fn ($q, $v) => $q->where('bhk', '>=', $v))
             ->when($f['bhk_max'], fn ($q, $v) => $q->where('bhk', '<=', $v))
             ->when($f['facing'], fn ($q, $v) => $q->where('facing', $v))
+            ->when($f['furnishing'] ?? null, fn ($q, $v) => $q->where('type_details->furnishing', $v))
+            ->when($f['water'] ?? null, fn ($q, $v) => $q->where('type_details->water_source', $v))
+            ->when($f['sub_type'] ?? null, fn ($q, $v) => $q->where('type_details->sub_type', $v))
+            ->when(! empty($f['corner']), fn ($q) => $q->where('type_details->corner', true))
             ->when($f['approved'], fn ($q) => $q->whereNotNull('approval_number'))
             ->when($f['offer'], fn ($q) => $q->whereNotNull('offer_price')->whereDate('offer_valid_till', '>=', today())->whereColumn('offer_price', '<', 'price'));
         self::placeWhere($q, array_merge($f['places'], $f['nearby']), ['city', 'district', 'area_name', 'address_line1']);
@@ -318,6 +354,7 @@ class PropertySearch
     {
         $ft = self::fulltext($f['wishes']);
         $projects = Project::launched()->whereHas('tenantRel', fn ($t) => $t->where('status', 'active'))
+            ->when($f['authority'] ?? null, fn ($q, $v) => $q->where('approval_authority', $v))
             ->with(['tenantRel:id,name', 'images', 'contactBlock', 'featureRows.master', 'layoutFile'])
             ->when($ft, fn ($q) => $q->select('projects.*')->selectRaw('MATCH(name, promo_text) AGAINST (? IN NATURAL LANGUAGE MODE) AS ft_score', [$ft])
                 ->whereRaw('MATCH(name, promo_text) AGAINST (? IN NATURAL LANGUAGE MODE) > 0', [$ft]));
@@ -333,6 +370,7 @@ class PropertySearch
             ->when($f['area_min'], fn ($q, $v) => $q->where('size_sqft', '>=', $v))
             ->when($f['area_max'], fn ($q, $v) => $q->where('size_sqft', '<=', $v))
             ->when($f['facing'], fn ($q, $v) => $q->where('facing', $v))
+            ->when(! empty($f['corner']), fn ($q) => $q->where('is_corner', true))
             ->get()
             ->filter(function (Plot $p) use ($f) {
                 $price = $p->currentPrice();
@@ -363,7 +401,7 @@ class PropertySearch
             'offer_text' => $l->offerIsActive() ? $l->offer_text : null, 'price_suffix' => $l->priceSuffix(), 'price_from' => false,
             'area_sqft' => (float) $l->area_sqft, 'bhk' => $l->bhk, 'facing' => $l->facing,
             'specs' => $l->specs(), 'features' => array_slice($chips, 0, 3), 'feature_names' => array_column($chips, 'name'),
-            'modes' => $l->contact?->modes() ?? [], 'approved' => (bool) $l->approval_number, 'badge' => $l->approval_number ? 'Approval '.$l->approval_number : null,
+            'modes' => $l->contact?->modes() ?? [], 'approved' => (bool) $l->approval_number, 'badge' => $l->approval_number ? __('Approval :no', ['no' => $l->approval_number]) : null,
             'promoter' => $l->tenantRel?->name, 'featured' => (bool) $l->featured, 'created_ts' => $l->published_at?->timestamp ?? $l->created_at->timestamp,
             'score' => (float) ($l->ft_score ?? 0), 'matching' => null, 'why' => null,
         ];
@@ -378,7 +416,7 @@ class PropertySearch
 
         return [
             'key' => 'P:'.$p->id, 'kind' => 'layout', 'id' => $p->id, 'tenant_id' => $p->tenant_id, 'code' => $p->project_code,
-            'title' => $p->name, 'url' => $p->publicUrl(), 'type' => 'layout', 'type_label' => 'Layout · '.$p->approval_type.' approved', 'purpose' => 'sale',
+            'title' => $p->name, 'url' => $p->publicUrl(), 'type' => 'layout', 'type_label' => __('Layout · :type approved', ['type' => __($p->approval_type)]), 'purpose' => 'sale',
             'location' => collect([$p->village, $p->location, $p->district])->filter()->unique()->implode(', '), 'city' => $p->location, 'district' => $p->district,
             'lat' => $p->lat, 'lng' => $p->lng,
             'image' => $cover ? $cover->url(true) : ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/') ? $p->layoutUrl() : null), 'image_count' => $p->images->count(),
@@ -386,10 +424,10 @@ class PropertySearch
             'offer_ends' => $min?->offerIsActive() ? $min->offer_valid_till : null, 'offer_text' => $min?->offerIsActive() ? $min->offer_text : null,
             'price_suffix' => '', 'price_from' => true,
             'area_sqft' => (float) $plots->max('size_sqft'), 'bhk' => null, 'facing' => null,
-            'specs' => array_values(array_filter([$plots->count().' matching plot'.($plots->count() > 1 ? 's' : ''),
-                Format::num($plots->min('size_sqft')).'–'.Format::num($plots->max('size_sqft')).' sq ft', $onOffer ? 'Offers available' : null])),
+            'specs' => array_values(array_filter([trans_choice(':count matching plot|:count matching plots', $plots->count()),
+                Format::num($plots->min('size_sqft')).'–'.Format::num($plots->max('size_sqft')).' '.__('sq ft'), $onOffer ? __('Offers available') : null])),
             'features' => array_slice($chips, 0, 3), 'feature_names' => array_column($chips, 'name'),
-            'modes' => $p->contactBlock?->modes() ?? ['call', 'whatsapp', 'email'], 'approved' => true, 'badge' => $p->approvalBadge() ?? $p->approval_type.' approved',
+            'modes' => $p->contactBlock?->modes() ?? ['call', 'whatsapp', 'email'], 'approved' => true, 'badge' => $p->approvalBadge() ?? __(':type approved', ['type' => __($p->approval_type)]),
             'promoter' => $p->tenantRel?->name, 'featured' => (bool) $p->is_featured, 'created_ts' => $p->launched_at?->timestamp ?? $p->created_at->timestamp,
             'score' => (float) ($p->ft_score ?? 0), 'matching' => $plots->count(), 'why' => null,
             'plot_ids' => $plots->pluck('id')->take(50)->all(),
@@ -494,6 +532,16 @@ class PropertySearch
     /** Built-in parser (no AI): types, purpose, budget, area, BHK, facing, approval, places, common Tamil words. */
     public static function parseLocally(string $text, ?array $previous = null): array
     {
+        // Tamil words → English (longest first) so the keyword parser understands Tamil searches too.
+        $ta = config('tamil_words', []);
+        foreach ($ta as $k => $v) {
+            // Place names take case endings (தஞ்சாவூர் → தஞ்சாவூரில்): also match the stem without the final pulli.
+            if (ctype_upper(ltrim($v)[0] ?? '') && str_ends_with($k, '்')) {
+                $ta[mb_substr($k, 0, -1)] = $v.' ';
+            }
+        }
+        uksort($ta, fn ($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+        $text = strtr($text, $ta);
         $t = Str::lower(str_replace([',', '₹'], ['', ' '], $text));
         $f = $previous ? self::clean($previous) : self::clean([]);
         $typeWords = [

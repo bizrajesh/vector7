@@ -26,7 +26,7 @@ class RequirementController extends Controller
             'filters' => $filters,
             'chips' => RequirementSearch::describe($filters),
             'plots' => $plots,
-            'seo' => ['title' => 'Find a plot that fits your needs', 'description' => 'Describe the plot you want — location, budget, size, facing — and see matching approved plots instantly.', 'canonical' => route('market.requirement'), 'noindex' => $text !== ''],
+            'seo' => ['title' => __('Find a plot that fits your needs'), 'description' => __('Describe the plot you want — location, budget, size, facing — and see matching approved plots instantly.'), 'canonical' => route('market.requirement'), 'noindex' => $text !== ''],
         ]);
     }
 
@@ -38,7 +38,7 @@ class RequirementController extends Controller
         $filters = array_intersect_key($filters, array_flip(RequirementSearch::KEYS));
         $request->user('customer')->requirements()->create(['query_text' => $data['q'], 'filters' => $filters, 'is_active' => true]);
 
-        return redirect()->route('account.requirements')->with('ok', 'Requirement saved. We will email you when a matching plot is launched.');
+        return redirect()->route('account.requirements')->with('ok', __('Requirement saved. We will email you when a matching plot is launched.'));
     }
 
     public function destroy(Request $request, CustomerRequirement $requirement)
@@ -46,6 +46,6 @@ class RequirementController extends Controller
         abort_unless($requirement->customer_id === $request->user('customer')->id, 404);
         $requirement->delete();
 
-        return back()->with('ok', 'Requirement removed.');
+        return back()->with('ok', __('Requirement removed.'));
     }
 }

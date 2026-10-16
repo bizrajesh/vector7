@@ -18,7 +18,10 @@ use Illuminate\Validation\ValidationException;
  */
 class LoginService
 {
-    public static function attempt(Request $request, string $guard): User|Customer
+    /**
+     * @param  (callable(User|Customer): ?string)|null  $allow  returns an error message when this login page is not for that account
+     */
+    public static function attempt(Request $request, string $guard, ?callable $allow = null): User|Customer
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -30,11 +33,11 @@ class LoginService
 
         if (! $account) {
             Hash::check($data['password'], '$2y$12$'.str_repeat('a', 53)); // equalise timing
-            $fail('These credentials do not match our records.');
+            $fail(__('These credentials do not match our records.'));
         }
         if ($account->isLocked()) {
             $mins = max(1, (int) ceil(now()->diffInMinutes($account->locked_until)));
-            $fail("Too many wrong passwords. This account is locked for $mins more minute(s). An administrator can unlock it.");
+            $fail(__('Too many wrong passwords. This account is locked for :mins more minute(s). An administrator can unlock it.', ['mins' => $mins]));
         }
         if (! Hash::check($data['password'], $account->password)) {
             $attempts = $account->failed_logins + 1;
@@ -45,15 +48,19 @@ class LoginService
             ])->saveQuietly();
             if ($lock) {
                 AuditLogger::log('account_locked', $account, null, ['email' => $account->email], $account->tenant_id ?? null);
-                $fail('Too many wrong passwords. This account is locked for 15 minutes.');
+                $fail(__('Too many wrong passwords. This account is locked for 15 minutes.'));
             }
-            $fail('These credentials do not match our records.');
+            $fail(__('These credentials do not match our records.'));
         }
         if (! $account->is_active) {
-            $fail('This account is disabled. Contact your administrator.');
+            $fail(__('This account is disabled. Contact your administrator.'));
         }
         if ($account instanceof User && $account->tenant_id && $account->tenant()->first()?->status !== 'active') {
             $fail('This workspace is suspended. Contact vector7 support.');
+        }
+
+        if ($allow && ($msg = $allow($account))) {
+            $fail($msg);
         }
 
         $account->forceFill(['failed_logins' => 0, 'locked_until' => null, 'last_login_at' => now()])->saveQuietly();
@@ -95,7 +102,7 @@ class LoginService
                 'email' => $target->email,
                 'password' => $plain,
                 'change_note' => $mustChange ? 'You will be asked to set a new password after you sign in.' : '',
-                'link' => $target instanceof User ? route('staff.login') : route('login'),
+                'link' => $target instanceof User ? route($target->isAppUser() ? 'app.login' : 'staff.login') : route('login'),
             ], $target instanceof User ? $target->tenant_id : null, now: true);
         }
 

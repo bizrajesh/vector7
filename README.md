@@ -22,6 +22,7 @@ This guide is written for a non-developer. Follow the steps in order.
 9. [Troubleshooting](#9-troubleshooting)
 10. [Where things are](#10-where-things-are)
 11. [Feature Update 01: listings, leads, AI search and chatbots](#11-feature-update-01-listings-leads-ai-search-and-chatbots)
+12. [Marketplace in Tamil and English, menus and the App sign-in](#12-marketplace-in-tamil-and-english-menus-and-the-app-sign-in)
 
 ---
 
@@ -124,7 +125,7 @@ php artisan schedule:work
 
 | Who | Where | Email | Password |
 |---|---|---|---|
-| App Admin (Super Admin) | /workspace/login | value of `APP_ADMIN_EMAIL` (default `admin@vector7.in`) | value of `APP_ADMIN_PASSWORD` (default `ChangeMe@2026`) |
+| App Admin (Super Admin) | **/app/login** (separate page, not linked from the marketplace) | value of `APP_ADMIN_EMAIL` (default `admin@vector7.in`) | value of `APP_ADMIN_PASSWORD` (default `ChangeMe@2026`) |
 | Tenant Admin (demo) | /workspace/login | `admin@demo.vector7.in` | `Demo@2026` |
 | Tenant Manager (demo) | /workspace/login | `manager@demo.vector7.in` | `Demo@2026` |
 | Tenant Sales (demo) | /workspace/login | `sales@demo.vector7.in` | `Demo@2026` |
@@ -255,7 +256,7 @@ hPanel → **Security → SSL** → install the free SSL for the domain. The app
 
 ### 4.8 Check it
 
-- Open `https://vector7.in` (marketplace) and `https://vector7.in/workspace/login`.
+- Open `https://vector7.in` (marketplace), `https://vector7.in/workspace/login` (promoters) and `https://vector7.in/app/login` (App team).
 - Sign in as App Admin → **Settings → SMTP → Send test email**.
 - `https://vector7.in/robots.txt` and `https://vector7.in/sitemap.xml` should open.
 
@@ -440,3 +441,37 @@ You can edit these under App → **Plans**. A listing counts once it is publishe
 Images are converted to WebP (1600 px plus a 400 px thumbnail), photo location data (EXIF) is removed, and the workspace watermark is added if it is switched on. Maps use Leaflet with OpenStreetMap tiles; no API key is needed.
 
 All the decisions made in this update are listed in `docs/DECISIONS.md` (entries 32–48).
+
+---
+
+## 12. Marketplace in Tamil and English, menus and the App sign-in
+
+### 12.1 Languages
+
+- The **public marketplace** and the **buyer account** pages (`/account`, buyer sign-in and registration) can be shown in **English or தமிழ்**. Use the **EN | தமிழ்** switch in the top bar. The choice is remembered for the visit and in a cookie for a year. A link can also force a language with `?lang=ta` or `?lang=en`.
+- **Everything else is always English**: the promoter workspace (`/workspace/...`), the App workspace (`/app/...`), staff sign-in pages, files and emails.
+- The Tamil texts are in `lang/ta.json` (English text → Tamil text). Edit that file to change any wording; no code changes are needed. Tamil validation messages are in `lang/ta/validation.php`.
+- Content that people type — listing titles and descriptions, project names, promoter names — is shown exactly as entered. App-seeded feature names, services and plan descriptions have Tamil versions in `lang/ta.json`.
+- Search and the chatbot understand Tamil. With AI on, Claude reads Tamil directly. With AI off, common Tamil words (places, lakh/crore, BHK, plot, flat, directions, amenities) are mapped to English in `config/tamil_words.php`.
+- Tamil uses the **Noto Sans Tamil** web font (in `public/fonts`). It is only downloaded when a page shows Tamil text.
+
+### 12.2 Menu-based filters
+
+| Menu | Opens | Filters shown |
+|---|---|---|
+| **Buy** (Plots & layouts, Flats, Villas, Independent houses, Farm land, Commercial) | `/buy`, `/buy/{type}` | Type pills, city / district, budget in lakhs and crores, plus filters for the type: BHK, furnishing, built-up area and facing for homes; extent in acres and water source for farm land; space type and area for commercial; plot size, facing and corner plots for plots. Also approved / RERA only and on offer. |
+| **Rent** | `/rent`, `/rent/{type}` | Only types that can be rented (flats, houses, villas, shops & offices); monthly rent; BHK and furnishing. No approval or offer filters. |
+| **Layouts** | `/buy/layouts` | Plot price, plot size, facing, approving authority (DTCP, CMDA, BDO, LPA, municipality, TNRERA), corner plots, with approval number only, on offer. |
+| **Services** | `/services` | All / For buyers / For promoters, and a search box. |
+| **For promoters** | `/for-promoters` | *Sell plots in layouts* or *Post individual properties*; the page shows the points and plan limits that matter for that choice. |
+| **Support** | `/support` | Topics (buying or renting, booking & payments, documents & registration, report a listing, promoter workspace, something else). Each topic shows quick answers, and the contact form is pre-set to that topic. Messages reach the App team tagged with the topic. |
+
+The filter panel always submits to the menu page you are on, so the address stays clean (for example `/rent/flats?bhk=2&furnishing=semi`).
+
+### 12.3 Separate App sign-in
+
+- **Promoters and their teams** sign in at **`/workspace/login`**. This page is linked from the marketplace ("Promoter workspace", "Post property").
+- **The vector7 App team** signs in at **`/app/login`**. This page is never linked from the marketplace, is marked `noindex`, and is not listed in `robots.txt`. It has its own look ("App admin").
+- Each page only accepts its own users. An App user on `/workspace/login` is told to use the App team's own page, without the address being shown. A promoter on `/app/login` gets the normal "credentials do not match" message.
+- Opening any `/app/...` address while signed out goes to `/app/login`. Signing out of the App workspace returns there too. Password-reset emails and `php artisan v7:app-admin` point App users to `/app/login`.
+- Tip: bookmark `/app/login` on the App team's computers.

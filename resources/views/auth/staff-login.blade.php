@@ -1,6 +1,6 @@
 <x-layouts.auth title="Workspace sign in">
     <h1 class="text-2xl font-extrabold">Sign in to your workspace</h1>
-    <p class="mt-1 text-sm text-muted">For promoters, their teams and vector7 staff.</p>
+    <p class="mt-1 text-sm text-muted">For layout promoters, property owners and their teams.</p>
     <form method="POST" action="{{ route('staff.login.post') }}" class="mt-6 space-y-4" novalidate>
         @csrf
         <x-field name="email" type="email" label="Email" required autocomplete="username" autofocus />

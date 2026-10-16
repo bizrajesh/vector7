@@ -44,9 +44,9 @@ class PlotType extends ListingType
         $d = $l->type_details ?? [];
 
         return array_values(array_filter([
-            $l->area_sqft ? Format::num($l->area_sqft).' sq ft ('.Format::num($l->area_sqft / 435.6, 1).' cents)' : null,
-            $l->facing ? $l->facing.' facing' : null,
-            ! empty($d['corner']) ? 'Corner' : null,
+            $l->area_sqft ? Format::num($l->area_sqft).' '.__('sq ft').' ('.Format::num($l->area_sqft / 435.6, 1).' '.__('cents').')' : null,
+            $l->facing ? __(':facing facing', ['facing' => __($l->facing)]) : null,
+            ! empty($d['corner']) ? __('Corner') : null,
         ]));
     }
 }
