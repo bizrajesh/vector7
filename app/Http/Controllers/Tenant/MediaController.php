@@ -43,7 +43,7 @@ class MediaController extends Controller
     {
         $owner = $this->owner($request, $kind, $id);
         $request->validate(['images' => ['required', 'array', 'max:'.PropertyMedia::MAX_IMAGES], 'images.*' => PropertyMedia::imageRules()],
-            ['images.*.max' => 'Each photo can be up to 5 MB.', 'images.*.extensions' => 'Use JPG, PNG or WebP photos.']);
+            ['images.*.max' => 'Each photo can be up to '.(PropertyMedia::maxKb() / 1024).' MB.', 'images.*.extensions' => 'Use JPG, PNG or WebP photos.']);
         $n = count(PropertyMedia::addImages($owner, $request->file('images')));
 
         return $this->back($kind, $owner)->with('ok', "$n photo(s) added.");

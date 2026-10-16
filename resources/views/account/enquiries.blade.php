@@ -17,6 +17,25 @@
             </tbody>
         </table></div>
     </div>
+    @if ($unlocks->isNotEmpty())
+        <div class="card mt-6">
+            <h2 class="section-title p-4">{{ __('Contacts you unlocked') }}</h2>
+            <div class="table-wrap"><table class="tbl">
+                <thead><tr><th>{{ __('Receipt') }}</th><th>{{ __('Property') }}</th><th class="num">{{ __('Paid') }}</th><th>{{ __('Valid until') }}</th></tr></thead>
+                <tbody>
+                @foreach ($unlocks as $u)
+                    @php($prop = $u->listing_id ? $u->listing : $u->project)
+                    <tr>
+                        <td class="font-mono text-sm">{{ $u->number }}<span class="block text-xs text-muted">@date($u->paid_at)</span></td>
+                        <td>@if ($prop)<a href="{{ $prop->publicUrl() }}#contact" class="font-semibold text-teal-700 hover:underline">{{ $u->title }}</a>@else{{ $u->title }}@endif</td>
+                        <td class="num">@inr($u->total)</td>
+                        <td class="text-sm">{{ $u->expires_at ? ($u->expires_at->isPast() ? __('Expired') : $u->expires_at->format('d-m-Y')) : __('No end') }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table></div>
+        </div>
+    @endif
     @if ($enquiries->isNotEmpty())
         <div class="card mt-6">
             <h2 class="section-title p-4">{{ __('Messages to vector7 support') }}</h2>

@@ -16,7 +16,7 @@ class Lead extends Model
     use Auditable, BelongsToTenant, SoftDeletes;
 
     public const SOURCES = [
-        'enquiry' => 'Enquiry form', 'call_click' => 'Call click', 'whatsapp_click' => 'WhatsApp click', 'show_number' => 'Show number',
+        'enquiry' => 'Enquiry form', 'callback' => 'Call-back request', 'call_click' => 'Call click', 'whatsapp_click' => 'WhatsApp click', 'show_number' => 'Show number',
         'chatbot' => 'Chatbot', 'ai_search' => 'AI search match', 'booking' => 'Booking', 'walk_in' => 'Walk-in', 'phone_call' => 'Phone call',
         'referral' => 'Referral', 'social' => 'Social media', 'manual' => 'Manual',
     ];

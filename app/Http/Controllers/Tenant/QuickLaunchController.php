@@ -98,6 +98,7 @@ class QuickLaunchController extends Controller
         if ($errors) {
             return back()->withInput()->with('plotErrors', $errors)->with('error', 'Fix the plot rows listed below. Nothing was saved — choose the photos and layout again when you resubmit.');
         }
+        PlanLimiter::ensure($tenant, 'plots', count($clean));
 
         $project = DB::transaction(function () use ($request, $data, $tenant, $clean, $contact) {
             $project = Project::create([

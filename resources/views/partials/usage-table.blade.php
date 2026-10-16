@@ -4,9 +4,10 @@
         <thead><tr><th>Limit</th><th class="num">Plan limit</th><th class="num">Used</th><th class="num">Left over</th><th class="w-1/3">% used</th></tr></thead>
         <tbody>
         @foreach ($usage as $key => $u)
+            @continue(($u['optional'] ?? false) && $u['unlimited'])
             <tr>
                 <td class="font-semibold">{{ $u['label'] }}</td>
-                <td class="num">{{ $u['display']['limit'] }}</td>
+                <td class="num">{{ $u['display']['limit'] }}@if (! empty($u['display']['topup']))<span class="block text-xs font-semibold text-teal-700">incl. {{ $u['display']['topup'] }} top-up</span>@endif</td>
                 <td class="num">{{ $u['display']['used'] }}</td>
                 <td class="num">{{ $u['display']['left'] }}</td>
                 <td>

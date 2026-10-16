@@ -40,6 +40,7 @@ Route::post('/chat', [Market\ChatController::class, 'send'])->middleware('thrott
 Route::post('/chat/consent', [Market\ChatController::class, 'consent'])->middleware('throttle:reveal')->name('market.chat.consent');
 Route::get('/compare', [Market\ShortlistController::class, 'compare'])->name('market.compare');
 Route::post('/contact/{kind}/{id}/reveal', [Market\ContactController::class, 'reveal'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:reveal')->name('market.contact.reveal');
+Route::post('/contact/{kind}/{id}/callback', [Market\ContactController::class, 'callback'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:enquiry')->name('market.contact.callback');
 Route::post('/contact/{kind}/{id}/email', [Market\ContactController::class, 'email'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:enquiry')->name('market.contact.email');
 Route::post('/listing/{listing}/report', [Market\ListingController::class, 'report'])->whereNumber('listing')->middleware('throttle:report')->name('market.listing.report');
 Route::get('/sitemap.xml', [Market\SeoController::class, 'sitemap'])->name('sitemap');
@@ -92,6 +93,12 @@ Route::middleware(['auth:customer', 'auth.session', 'customer'])->prefix('accoun
     Route::put('/password', [Customer\AccountController::class, 'updatePassword'])->name('password');
     Route::get('/book/{plot}', [Customer\BookingController::class, 'create'])->name('book');
     Route::post('/book/{plot}', [Customer\BookingController::class, 'store'])->name('book.store');
+});
+// Paid contact view (Plans v2): sign in, pay on the hosted page, come back to the property
+Route::middleware(['auth:customer', 'auth.session', 'customer'])->group(function () {
+    Route::get('/contact/{kind}/{id}/unlock', [Market\ContactController::class, 'unlockStart'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->name('market.contact.unlock.start');
+    Route::post('/contact/{kind}/{id}/unlock', [Market\ContactController::class, 'unlock'])->whereIn('kind', ['listing', 'project'])->whereNumber('id')->middleware('throttle:reveal')->name('market.contact.unlock');
+    Route::get('/contact/unlocks/{unlock}/verify', [Market\ContactController::class, 'unlockVerify'])->name('market.contact.unlock.verify');
 });
 Route::middleware(['auth:customer', 'auth.session'])->group(function () {
     Route::get('/account/change-password', [Auth\CustomerAuthController::class, 'showForceChange'])->name('account.force-password');
@@ -195,8 +202,9 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
     Route::delete('/settings/holidays/{holiday}', [Tenant\SettingsController::class, 'deleteHoliday'])->middleware('perm:tenant_settings.update')->name('settings.holidays.destroy');
     Route::get('/settings/plan', [Tenant\PlanController::class, 'show'])->middleware('perm:tenant_settings.view')->name('settings.plan');
     Route::post('/settings/plan/{plan}', [Tenant\PlanController::class, 'upgrade'])->middleware('perm:tenant_settings.update')->name('settings.plan.upgrade');
+    Route::post('/settings/topups/{pack}', [Tenant\PlanController::class, 'topup'])->middleware('perm:tenant_settings.update')->name('settings.topup');
     Route::get('/settings/invoices/{invoice}', [Tenant\PlanController::class, 'invoice'])->middleware('perm:tenant_settings.view')->name('settings.invoice');
-    Route::post('/settings/invoices/{invoice}/verify', [Tenant\PlanController::class, 'verify'])->middleware('perm:tenant_settings.update')->name('settings.invoice.verify');
+    Route::match(['get', 'post'], '/settings/invoices/{invoice}/verify', [Tenant\PlanController::class, 'verify'])->middleware('perm:tenant_settings.update')->name('settings.invoice.verify');
     Route::get('/brokers', [Tenant\BrokerController::class, 'index'])->middleware('perm:sales.view')->name('brokers.index');
     Route::post('/brokers', [Tenant\BrokerController::class, 'store'])->middleware('perm:sales.create')->name('brokers.store');
     Route::put('/brokers/{broker}', [Tenant\BrokerController::class, 'update'])->middleware('perm:sales.update')->name('brokers.update');
@@ -389,10 +397,18 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::get('/plans', [App\PlanController::class, 'index'])->middleware('perm:plans.view')->name('plans.index');
     Route::get('/plans/create', [App\PlanController::class, 'create'])->middleware('perm:plans.create')->name('plans.create');
     Route::post('/plans', [App\PlanController::class, 'store'])->middleware('perm:plans.create')->name('plans.store');
-    Route::get('/plans/{plan}/edit', [App\PlanController::class, 'edit'])->middleware('perm:plans.update')->name('plans.edit');
-    Route::put('/plans/{plan}', [App\PlanController::class, 'update'])->middleware('perm:plans.update')->name('plans.update');
-    Route::delete('/plans/{plan}', [App\PlanController::class, 'destroy'])->middleware('perm:plans.delete')->name('plans.destroy');
+    Route::get('/plans/{plan}/edit', [App\PlanController::class, 'edit'])->middleware('perm:plans.update')->whereNumber('plan')->name('plans.edit');
+    Route::put('/plans/{plan}', [App\PlanController::class, 'update'])->middleware('perm:plans.update')->whereNumber('plan')->name('plans.update');
+    Route::delete('/plans/{plan}', [App\PlanController::class, 'destroy'])->middleware('perm:plans.delete')->whereNumber('plan')->name('plans.destroy');
 
+    Route::get('/plans/topups', [App\TopupController::class, 'packs'])->middleware('perm:plans.view')->name('topups.index');
+    Route::post('/plans/topups', [App\TopupController::class, 'storePack'])->middleware('perm:plans.create')->name('topups.store');
+    Route::put('/plans/topups/{pack}', [App\TopupController::class, 'updatePack'])->middleware('perm:plans.update')->name('topups.update');
+    Route::delete('/plans/topups/{pack}', [App\TopupController::class, 'destroyPack'])->middleware('perm:plans.delete')->name('topups.destroy');
+    Route::get('/plans/contact-charges', [App\ContactChargeController::class, 'index'])->middleware('perm:plans.view')->name('contact-charges.index');
+    Route::put('/plans/contact-charges', [App\ContactChargeController::class, 'update'])->middleware('perm:plans.update')->name('contact-charges.update');
+    Route::post('/tenants/{tenant}/topups', [App\TopupController::class, 'grant'])->middleware('perm:subscriptions.update')->name('topups.grant');
+    Route::post('/topups/{topup}/cancel', [App\TopupController::class, 'cancel'])->middleware('perm:subscriptions.update')->name('topups.cancel');
     Route::get('/tenants', [App\SubscriptionController::class, 'index'])->middleware('perm:subscriptions.view')->name('subscriptions.index');
     Route::get('/tenants/{tenant}', [App\SubscriptionController::class, 'show'])->middleware('perm:subscriptions.view')->name('subscriptions.show');
     Route::put('/tenants/{tenant}/subscription', [App\SubscriptionController::class, 'update'])->middleware('perm:subscriptions.update')->name('subscriptions.update');

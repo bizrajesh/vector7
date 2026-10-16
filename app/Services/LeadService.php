@@ -238,7 +238,7 @@ class LeadService
     {
         return match ($source) {
             'call_click', 'whatsapp_click', 'show_number', 'chatbot', 'ai_search', 'booking' => $source,
-            'enquiry' => 'enquiry',
+            'enquiry', 'callback' => 'enquiry',
             default => 'note',
         };
     }

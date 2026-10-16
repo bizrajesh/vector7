@@ -42,7 +42,7 @@
         <form method="POST" action="{{ route('ws.media.upload', [$kind, $owner->id]) }}" enctype="multipart/form-data" class="space-y-2">@csrf
             <label class="dropzone" for="media_files_{{ $kind }}">
                 <x-icon name="upload" class="h-6 w-6" />
-                <span><strong>Drop photos here</strong> or tap to choose · JPG, PNG or WebP, up to 5 MB each</span>
+                <span><strong>Drop photos here</strong> or tap to choose · JPG, PNG or WebP, up to {{ \App\Services\PropertyMedia::maxKb() / 1024 }} MB each</span>
                 <input id="media_files_{{ $kind }}" type="file" name="images[]" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" data-dropzone>
             </label>
             @error('images')<p class="error">{{ $message }}</p>@enderror

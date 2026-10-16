@@ -67,7 +67,7 @@ abstract class TestCase extends BaseTestCase
     }
 
     /** Create a tenant with its Tenant Admin; optionally copy the App masters. */
-    protected function makeTenant(string $name = 'Acme Promoters', bool $masters = false, string $plan = 'professional'): array
+    protected function makeTenant(string $name = 'Acme Promoters', bool $masters = false, string $plan = 'growth'): array
     {
         $plan = Plan::where('slug', $plan)->firstOrFail();
         Plan::query()->update(['is_trial_default' => false]);

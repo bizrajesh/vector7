@@ -63,6 +63,7 @@ class SubscriptionController extends Controller
             'largest' => StorageFile::where('tenant_id', $tenant->id)->orderByDesc('size')->take(15)->get(),
             'invoices' => SubscriptionInvoice::where('tenant_id', $tenant->id)->with('plan')->latest('id')->get(),
             'plans' => Plan::orderBy('sort')->get(),
+            'topups' => \App\Models\TenantTopup::where('tenant_id', $tenant->id)->with('pack')->latest('id')->take(30)->get(),
         ]);
     }
 
@@ -92,7 +93,11 @@ class SubscriptionController extends Controller
     /** Manual payment when no gateway is configured (or paid offline). */
     public function markPaid(Request $request, SubscriptionInvoice $invoice)
     {
+        abort_if($invoice->status === 'cancelled', 422, 'This invoice was cancelled.');
         SubscriptionService::markPaid($invoice, 'manual', $request->input('reference'), $request->user());
+        if ($invoice->kind === 'topup') {
+            return back()->with('ok', "Invoice {$invoice->number} marked paid; the top-up is active until ".Format::date($invoice->fresh()->period_end).'.');
+        }
 
         return back()->with('ok', "Invoice {$invoice->number} marked paid; subscription active until ".Format::date($invoice->fresh()->period_end).'.');
     }

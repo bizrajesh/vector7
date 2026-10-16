@@ -55,16 +55,52 @@
             <thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse ($invoices as $inv)
-                <tr><td class="font-mono text-sm">{{ $inv->number }}</td><td>{{ $inv->plan->name }}</td><td class="text-sm">@date($inv->period_start) – @date($inv->period_end)</td><td class="num">@inr($inv->total)</td>
-                    <td><span class="{{ $inv->status === 'paid' ? 'badge-teal' : 'badge-amber' }}">{{ ucfirst($inv->status) }}</span> @if ($inv->method)<span class="text-xs text-muted">{{ $inv->method }}</span>@endif</td>
+                <tr><td class="font-mono text-sm">{{ $inv->number }}</td><td>{{ $inv->itemLabel() }}</td><td class="text-sm">@date($inv->period_start) – @date($inv->period_end)</td><td class="num">@inr($inv->total)</td>
+                    <td><span class="{{ $inv->status === 'paid' ? 'badge-teal' : ($inv->status === 'cancelled' ? 'badge-gray' : 'badge-amber') }}">{{ ucfirst($inv->status) }}</span> @if ($inv->method)<span class="text-xs text-muted">{{ $inv->method }}</span>@endif</td>
                     <td class="text-right whitespace-nowrap">
                         <a href="{{ route('app.invoices.show', $inv) }}" class="btn-ghost btn-sm">PDF</a>
-                        @if ($inv->status !== 'paid')@can('subscriptions.approve')<x-confirm :action="route('app.invoices.paid', $inv)" message="Mark {{ $inv->number }} as paid and activate the plan?" class="btn-teal btn-sm">Mark paid</x-confirm>@endcan @endif
+                        @if ($inv->status === 'due')@can('subscriptions.approve')<x-confirm :action="route('app.invoices.paid', $inv)" message="Mark {{ $inv->number }} as paid and activate {{ $inv->kind === 'topup' ? 'the top-up' : 'the plan' }}?" class="btn-teal btn-sm">Mark paid</x-confirm>@endcan @endif
                     </td></tr>
             @empty
                 <tr><td colspan="6" class="text-muted">No invoices.</td></tr>
             @endforelse
             </tbody>
         </table></div>
+    </div>
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+        <div class="card lg:col-span-2">
+            <h2 class="section-title p-4">Top-ups</h2>
+            <div class="table-wrap"><table class="tbl">
+                <thead><tr><th>Top-up</th><th>Source</th><th>Valid</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                @forelse ($topups as $t)
+                    <tr>
+                        <td class="font-semibold">{{ $t->label() }}@if ($t->pack)<span class="block text-xs text-muted">{{ $t->pack->name }}{{ $t->quantity > 1 ? ' × '.$t->quantity : '' }}</span>@endif @if ($t->note)<span class="block text-xs text-muted">{{ $t->note }}</span>@endif</td>
+                        <td class="text-sm">{{ $t->source === 'grant' ? 'Granted' : 'Bought' }}</td>
+                        <td class="text-sm">{{ $t->starts_on ? \App\Support\Format::date($t->starts_on) : '—' }} – {{ $t->ends_on ? \App\Support\Format::date($t->ends_on) : 'no end' }}</td>
+                        <td><span class="{{ $t->isCurrent() ? 'badge-teal' : ($t->status === 'pending' ? 'badge-amber' : 'badge-gray') }}">{{ $t->isCurrent() ? 'Active' : ($t->status === 'active' ? 'Ended' : ucfirst($t->status)) }}</span></td>
+                        <td class="text-right">@if (in_array($t->status, ['active', 'pending'], true))@can('subscriptions.update')<x-confirm :action="route('app.topups.cancel', $t)" message="Cancel {{ $t->label() }}?" class="btn-ghost btn-sm text-red-700">Cancel</x-confirm>@endcan @endif</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="text-muted">No top-ups.</td></tr>
+                @endforelse
+                </tbody>
+            </table></div>
+        </div>
+        @can('subscriptions.update')
+            <form method="POST" action="{{ route('app.topups.grant', $tenant) }}" class="card card-pad space-y-3">
+                @csrf
+                <h2 class="section-title">Grant a free top-up</h2>
+                <p class="text-sm text-muted">Adds to this tenant's plan limit at once, free of charge.</p>
+                <x-select name="key" label="Add to" :options="\App\Models\TopupPack::KEYS" />
+                <div class="grid grid-cols-2 gap-3">
+                    <x-field name="units" type="number" min="1" label="How many" value="1" required />
+                    <x-select name="storage_unit" label="Storage unit" :options="['GB' => 'GB', 'MB' => 'MB']" />
+                </div>
+                <x-field name="ends_on" type="date" label="Until (blank = no end)" :value="$tenant->subscription?->ends_on?->toDateString()" />
+                <x-field name="note" label="Note" placeholder="e.g. Launch offer" />
+                <button class="btn-primary">Grant</button>
+            </form>
+        @endcan
     </div>
 </x-layouts.workspace>

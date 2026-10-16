@@ -33,9 +33,15 @@ class PropertyMedia
         return ['nullable', 'array', 'max:'.self::MAX_IMAGES];
     }
 
+    /** Largest photo a promoter may upload, in KB (App setting "listings.image_max_mb", default 5 MB). */
+    public static function maxKb(): int
+    {
+        return max(1, (int) AppSettings::get('listings.image_max_mb', 5)) * 1024;
+    }
+
     public static function imageRules(): array
     {
-        return ['file', 'max:'.self::MAX_KB, 'extensions:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp'];
+        return ['file', 'max:'.self::maxKb(), 'extensions:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp'];
     }
 
     /** Most images an owner may have: 20, or the plan's "images per listing" when lower. */

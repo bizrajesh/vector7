@@ -90,6 +90,7 @@ class AccountController extends Controller
                 ->with(['tenant:id,name', 'stage' => fn ($q) => $q->withoutGlobalScopes(), 'interests' => fn ($q) => $q->withoutGlobalScopes()->with([
                     'listing' => fn ($l) => $l->withoutGlobalScopes(), 'project' => fn ($p) => $p->withoutGlobalScopes(), 'plot' => fn ($p) => $p->withoutGlobalScopes()])])
                 ->latest('id')->get(),
+            'unlocks' => \App\Models\ContactUnlock::where('customer_id', $c->id)->where('status', 'paid')->latest('id')->take(50)->get(),
         ]));
     }
 

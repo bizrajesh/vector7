@@ -19,6 +19,14 @@
         </div>
     @endif
 
+    @if ($lead->preferred_mode || $lead->preferred_time)
+        <div class="mb-6 flex flex-wrap items-center gap-3 rounded-xl bg-teal-50 p-4 text-sm text-teal-900 ring-1 ring-teal-100">
+            <x-icon name="phone" class="h-5 w-5" />
+            <span><strong>Wants a call back</strong> by {{ \App\Http\Controllers\Market\ContactController::CALLBACK_MODES[$lead->preferred_mode] ?? 'any mode' }}@if ($lead->preferred_time) · {{ $lead->preferred_time }}@endif</span>
+            <span class="text-teal-800">{{ $lead->mobile }}@if ($lead->email) · {{ $lead->email }}@endif</span>
+        </div>
+    @endif
+
     <div class="grid gap-6 xl:grid-cols-3">
         <div class="space-y-6 xl:col-span-2">
             {{-- Quick actions --}}

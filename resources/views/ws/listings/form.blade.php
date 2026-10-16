@@ -83,7 +83,7 @@
             @unless ($listing->exists)
                 <div class="card card-pad space-y-2">
                     <h2 class="section-title">Photos</h2>
-                    <label class="dropzone" for="new_images"><x-icon name="upload" class="h-6 w-6" /><span><strong>Drop photos here</strong> or tap to choose · at least {{ \App\Services\PropertyMedia::MIN_IMAGES }} to publish, up to {{ \App\Services\PropertyMedia::MAX_IMAGES }} · JPG, PNG or WebP up to 5 MB</span>
+                    <label class="dropzone" for="new_images"><x-icon name="upload" class="h-6 w-6" /><span><strong>Drop photos here</strong> or tap to choose · at least {{ \App\Services\PropertyMedia::MIN_IMAGES }} to publish, up to {{ \App\Services\PropertyMedia::MAX_IMAGES }} · JPG, PNG or WebP up to {{ \App\Services\PropertyMedia::maxKb() / 1024 }} MB</span>
                         <input id="new_images" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp" class="sr-only" data-dropzone></label>
                     @error('images')<p class="error">{{ $message }}</p>@enderror
                     @error('images.*')<p class="error">{{ $message }}</p>@enderror

@@ -1,5 +1,5 @@
-<x-layouts.workspace title="Leads">
-    <x-page-header title="Leads" subtitle="Everyone who called, messaged, enquired, chatted or booked — one pipeline. Drag cards between stages or use “Move to”.">
+<x-layouts.workspace title="Leads & enquiries">
+    <x-page-header title="Leads & enquiries" subtitle="Everyone who called, messaged, enquired, asked for a call back, chatted or booked — one pipeline. Drag cards between stages or use “Move to”.">
         <a href="{{ route('ws.leads.reports') }}" class="btn-light"><x-icon name="chart" class="h-4 w-4" /> Reports</a>
         @can('leads.export')<x-export-buttons />@endcan
         <a href="{{ route('help.show', 'leads') }}" class="btn-ghost" data-help><x-icon name="info" class="h-4 w-4" /> Help</a>
@@ -101,7 +101,7 @@
                     <td><a href="{{ route('ws.leads.show', $l) }}" class="font-semibold">{{ $l->name }}</a>
                         <span class="{{ ['hot' => 'badge-red', 'warm' => 'badge-amber', 'cold' => 'badge-blue'][$l->priority] ?? 'badge-gray' }} ml-1">{{ \App\Models\Lead::PRIORITIES[$l->priority] ?? '' }}</span>
                         <p class="text-xs text-muted">{{ $l->mobile }} {{ $l->email }} · {{ $l->lead_code }}</p></td>
-                    <td class="text-sm">{{ $l->sourceLabel() }}<p class="text-xs text-muted">@date($l->created_at)</p></td>
+                    <td class="text-sm">{{ $l->sourceLabel() }}<p class="text-xs text-muted">@date($l->created_at)</p>@if ($l->preferred_mode)<p class="text-xs font-semibold text-teal-700">Call back: {{ \App\Http\Controllers\Market\ContactController::CALLBACK_MODES[$l->preferred_mode] ?? '' }}{{ $l->preferred_time ? ' · '.$l->preferred_time : '' }}</p>@endif</td>
                     <td class="max-w-xs text-sm"><p class="truncate">{{ $l->interests->map->label()->implode(', ') ?: '—' }}</p></td>
                     <td><span class="badge-{{ $l->stage?->color ?? 'gray' }}">{{ $l->stage?->name }}</span></td>
                     <td class="text-sm {{ $l->isOverdue() ? 'font-bold text-red-700' : '' }}">{{ $l->next_follow_up_at ? \App\Support\Format::datetime($l->next_follow_up_at) : '—' }}</td>

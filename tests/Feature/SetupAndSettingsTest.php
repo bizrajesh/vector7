@@ -152,8 +152,10 @@ class SetupAndSettingsTest extends TestCase
         $this->assertEquals(512, $u['storage_mb']['used']);
         $this->assertEquals(512, $u['storage_mb']['left']);
         $this->assertEquals(50.0, $u['storage_mb']['pct']);
-        $this->assertSame(1, $u['users_tenant_admin']['used']);
-        $this->assertSame(0, $u['users_tenant_admin']['left']);
+        $this->assertSame(1, $u['users']['used']);
+        $this->assertSame(4, $u['users']['left']);      // Starter: 5 users, all roles
+        $this->assertTrue($u['users_tenant_admin']['unlimited']); // per-role caps are optional
+        $this->assertSame(5, $u['listings']['limit']);  // 5 free active listings
         $this->assertSame('teal', PlanLimiter::level(50));
         $this->assertSame('amber', PlanLimiter::level(85));
         $this->assertSame('red', PlanLimiter::level(100));

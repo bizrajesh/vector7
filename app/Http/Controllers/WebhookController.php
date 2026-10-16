@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContactUnlock;
 use App\Models\SubscriptionInvoice;
+use App\Services\ContactCharges;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-/** Payment-gateway webhooks (subscription payments only). Signature is verified before anything else. */
+/** Payment-gateway webhooks: plan and top-up invoices, and buyers' contact-view payments. Signature is verified before anything else. */
 class WebhookController extends Controller
 {
     public function payment(Request $request, string $gateway)
@@ -27,19 +29,26 @@ class WebhookController extends Controller
             }
             $link = $payload['payload']['payment_link']['entity'] ?? [];
             $paymentId = $payload['payload']['payment']['entity']['id'] ?? null;
-            $invoice = SubscriptionInvoice::where('gateway_order_id', $link['id'] ?? '-')->orWhere('number', $link['reference_id'] ?? '-')->first();
+            [$ref, $gid] = [$link['reference_id'] ?? '-', $link['id'] ?? '-'];
         } else {
             $data = $payload['data'] ?? $payload;
             if (! in_array(strtolower((string) ($data['status'] ?? $payload['event'] ?? '')), ['paid', 'payment.success', 'payment_link.paid'], true)) {
                 return response()->json(['ok' => true, 'ignored' => true]);
             }
             $paymentId = $data['payment_id'] ?? null;
-            $invoice = SubscriptionInvoice::where('number', $data['reference_id'] ?? '-')->orWhere('gateway_order_id', $data['id'] ?? '-')->first();
+            [$ref, $gid] = [(string) ($data['reference_id'] ?? '-'), (string) ($data['id'] ?? '-')];
         }
-        if (! $invoice) {
+        $invoice = SubscriptionInvoice::withoutGlobalScopes()->where(fn ($q) => $q->where('number', $ref)->orWhere('gateway_order_id', $gid))->first();
+        if ($invoice) {
+            SubscriptionService::markPaid($invoice, $gateway, $paymentId);
+
+            return response()->json(['ok' => true]);
+        }
+        $unlock = ContactUnlock::where(fn ($q) => $q->where('number', $ref)->orWhere('gateway_order_id', $gid))->first();
+        if (! $unlock) {
             return response()->json(['ok' => false, 'error' => 'invoice not found'], 404);
         }
-        SubscriptionService::markPaid($invoice, $gateway, $paymentId);
+        ContactCharges::markPaid($unlock, $gateway, $paymentId);
 
         return response()->json(['ok' => true]);
     }

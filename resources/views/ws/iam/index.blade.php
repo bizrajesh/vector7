@@ -7,12 +7,12 @@
     @include('ws.iam.tabs')
     @include('partials.generated-password')
 
-    <div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-        @foreach (\App\Services\PlanLimiter::USER_ROLE_KEYS as $base => $key)
+    <div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-6">
+        @foreach (array_merge(['users'], array_values(\App\Services\PlanLimiter::USER_ROLE_KEYS)) as $key)
             @php($u = $usage[$key])
-            <div class="card p-4">
-                <p class="text-xs font-semibold text-muted">{{ $u['label'] }}</p>
-                <p class="mt-1 text-lg font-extrabold">{{ $u['display']['used'] }} <span class="text-sm font-semibold text-muted">/ {{ $u['display']['limit'] }}</span></p>
+            <div class="card p-4 {{ $key === 'users' ? 'ring-2 ring-teal-100' : '' }}">
+                <p class="text-xs font-semibold text-muted">{{ $key === 'users' ? 'All users (plan limit)' : $u['label'] }}</p>
+                <p class="mt-1 text-lg font-extrabold">{{ $u['display']['used'] }} <span class="text-sm font-semibold text-muted">/ {{ $u['unlimited'] && $key !== 'users' ? 'no cap' : $u['display']['limit'] }}</span></p>
                 @unless ($u['unlimited'])<x-progress :pct="$u['pct']" class="mt-2" :label="$u['label']" />@endunless
             </div>
         @endforeach

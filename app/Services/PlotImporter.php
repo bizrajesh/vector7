@@ -205,6 +205,10 @@ class PlotImporter
             $created = 0;
             $updated = 0;
             $existing = Plot::where('project_id', $project->id)->lockForUpdate()->get()->keyBy(fn ($p) => strtoupper($p->plot_no));
+            $adding = count(array_filter($clean, fn ($r) => ! isset($existing[$r['plot_no']])));
+            if ($adding > 0 && ($tenant = \App\Models\Tenant::find($project->tenant_id))) {
+                PlanLimiter::ensure($tenant, 'plots', $adding);
+            }
             foreach ($clean as $row) {
                 $poly = $row['map_polygon'];
                 unset($row['map_polygon']);

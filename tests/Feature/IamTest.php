@@ -95,14 +95,22 @@ class IamTest extends TestCase
 
     public function test_tenant_admin_creates_user_within_plan_limits(): void
     {
-        [$tenant, $admin] = $this->makeTenant('Small Co', false, 'starter'); // starter: 2 sales users
+        [$tenant, $admin] = $this->makeTenant('Small Co', false, 'starter'); // starter: 5 users (all roles), admin is 1
         $sales = \App\Models\Role::systemRole('tenant_sales', $tenant->id);
         $mk = fn ($i) => $this->actingAs($admin)->post(route('ws.iam.store'), ['name' => "S$i", 'email' => "s$i@x.com", 'role_id' => $sales->id, 'is_active' => 1, 'password_mode' => 'generate', 'must_change' => 1]);
-        $mk(1)->assertSessionHas('generated');
-        $mk(2)->assertSessionHas('generated');
-        $mk(3)->assertSessionHas('error');
+        foreach (range(1, 4) as $i) {
+            $mk($i)->assertSessionHas('generated');
+        }
+        $mk(5)->assertSessionHas('error');
         $this->assertStringContainsString('Upgrade your plan', session('error'));
-        $this->assertSame(2, User::where('tenant_id', $tenant->id)->where('role_id', $sales->id)->count());
+        $this->assertSame(5, User::where('tenant_id', $tenant->id)->count());
+
+        // An optional per-role cap still works on top of the total.
+        $starter = \App\Models\Plan::where('slug', 'starter')->first();
+        $starter->limits()->where('key', 'users')->update(['value' => 10]);
+        $starter->limits()->where('key', 'users_tenant_sales')->update(['value' => 4]);
+        $mk(6)->assertSessionHas('error');
+        $this->assertSame(4, User::where('tenant_id', $tenant->id)->where('role_id', $sales->id)->count());
     }
 
     public function test_tenant_admin_unlocks_account(): void

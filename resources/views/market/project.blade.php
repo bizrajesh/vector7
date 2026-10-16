@@ -75,7 +75,7 @@
         </div>
 
         <aside class="space-y-6">
-            @include('partials.market-contact', ['kind' => 'project', 'ownerId' => $project->id, 'c' => $contact, 'title' => $project->name, 'src' => $src])
+            @include('partials.market-contact', ['kind' => 'project', 'owner' => $project, 'ownerId' => $project->id, 'c' => $contact, 'title' => $project->name, 'src' => $src])
             @if ($project->featureChips())
                 <section class="card card-pad"><h2 class="font-extrabold">{{ __('Features & facilities') }}</h2>
                     <ul class="mt-3 flex flex-wrap gap-2 text-sm">@foreach ($project->featureChips() as $c)<li class="chip"><x-icon :name="$c['icon']" class="h-4 w-4" /> {{ __($c['name']) }}</li>@endforeach</ul>

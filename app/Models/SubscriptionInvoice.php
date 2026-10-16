@@ -25,4 +25,15 @@ class SubscriptionInvoice extends Model
 
     public function plan(): BelongsTo { return $this->belongsTo(Plan::class); }
     public function subscription(): BelongsTo { return $this->belongsTo(Subscription::class); }
+    public function topup(): BelongsTo { return $this->belongsTo(TenantTopup::class, 'tenant_topup_id'); }
+
+    /** What the invoice is for, e.g. "Growth plan (monthly)" or "Top-up: 5 GB extra storage × 2". */
+    public function itemLabel(): string
+    {
+        if ($this->kind === 'topup') {
+            return $this->description ?: 'Top-up';
+        }
+
+        return ($this->plan?->name ?? 'Plan').' plan'.($this->plan ? ' ('.$this->plan->billing_cycle.')' : '');
+    }
 }

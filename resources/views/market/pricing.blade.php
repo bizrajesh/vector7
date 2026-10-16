@@ -27,18 +27,20 @@
                     <p class="mt-5 text-4xl font-extrabold">@inr($p->price)<span class="text-base font-semibold text-muted"> / {{ $p->billing_cycle === 'yearly' ? __('year') : __('month') }}</span></p>
                     <p class="text-xs text-muted">{{ __('+ GST · :days-day free trial', ['days' => $p->trial_days]) }}</p>
                     <ul class="mt-5 flex-1 space-y-2 text-sm">
-                        @php($lim = fn ($k) => ($v = $p->limit($k)) < 0 ? __('Unlimited') : $v)
+                        @php($lim = fn ($k) => ($v = $p->limit($k)) < 0 ? __('Unlimited') : ($k === 'listings' ? max($v, \App\Services\PlanLimiter::freeListings()) : $v))
                         @php($tick = \App\Support\Icons::svg('check', 'h-4 w-4 mt-0.5'))
                         @if ($isListings)
                             <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n live property listings', ['n' => $lim('listings')]) }}</li>
                             <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Up to :n photos per listing', ['n' => $lim('images_per_listing')]) }}</li>
                         @else
                             <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n active projects', ['n' => $lim('projects')]) }}</li>
+                            <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n plots', ['n' => $lim('plots')]) }}</li>
                             <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n live property listings', ['n' => $lim('listings')]) }}</li>
                         @endif
                         <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':size document storage', ['size' => $p->limit('storage_mb') < 0 ? __('Unlimited') : \App\Support\Format::bytes($p->limit('storage_mb') * 1048576)]) }}</li>
-                        <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':sales sales users, :managers managers', ['sales' => $lim('users_tenant_sales'), 'managers' => $lim('users_tenant_manager')]) }}</li>
+                        <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n users (any role)', ['n' => $lim('users')]) }}</li>
                         <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n AI credits a month', ['n' => $lim('ai_credits')]) }}</li>
+                        <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Top up users, projects, plots, storage or listings any time') }}</li>
                         @foreach (config('permissions.plan_modules') as $m => $label)
                             @if ($p->hasModule($m))<li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __($label) }}</li>@endif
                         @endforeach

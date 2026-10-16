@@ -9,6 +9,7 @@ use App\Models\Plot;
 use App\Models\Project;
 use App\Models\Sale;
 use App\Models\Tenant;
+use App\Models\TenantTopup;
 use App\Models\User;
 use App\Support\Format;
 
@@ -28,6 +29,8 @@ class PlanLimiter
     public const LIMIT_LABELS = [
         'storage_mb' => 'Storage',
         'projects' => 'Projects',
+        'plots' => 'Plots',
+        'users' => 'Users (all roles)',
         'listings' => 'Active listings',
         'images_per_listing' => 'Images per listing',
         'ai_credits' => 'AI credits / month',
@@ -38,11 +41,48 @@ class PlanLimiter
         'users_support' => 'Support users',
     ];
 
+    /** The five headline plan items (Starter / Growth / Enterprise are designed on these). */
+    public const PLAN_ITEMS = ['storage_mb', 'projects', 'plots', 'users', 'listings'];
+
+    /** Optional per-role caps (-1 = no cap; the "Users (all roles)" limit still applies). */
+    public const ROLE_CAP_KEYS = ['users_tenant_admin', 'users_tenant_manager', 'users_tenant_sales', 'users_tenant_account', 'users_support'];
+
+    /** Free active listings every promoter keeps, even when the subscription has lapsed (App setting). */
+    public static function freeListings(): int
+    {
+        return max(0, (int) AppSettings::get('listings.free', 5));
+    }
+
+    /** Plan limit + current top-ups. -1 = unlimited. */
+    public static function limit(Tenant $tenant, string $key): int
+    {
+        $base = $tenant->plan()?->limit($key) ?? 0;
+        if ($base < 0) {
+            return -1;
+        }
+
+        $limit = $base + self::topups($tenant, $key);
+
+        return $key === 'listings' ? max($limit, self::freeListings()) : $limit;
+    }
+
+    /** Units added by current top-ups (bought or granted). */
+    public static function topups(Tenant $tenant, string $key): int
+    {
+        if (! isset(\App\Models\TopupPack::KEYS[$key])) {
+            return 0;
+        }
+
+        return (int) TenantTopup::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('key', $key)->current()->sum('units');
+    }
+
     public static function used(Tenant $tenant, string $key): int|float
     {
         return match ($key) {
             'storage_mb' => round($tenant->storage_used_bytes / 1048576, 2),
             'projects' => Project::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNull('deleted_at')->where('status', '!=', 'closed')->count(),
+            'plots' => Plot::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count(),
+            'users' => User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count(),
             'ai_credits' => (int) AiUsageLog::where('tenant_id', $tenant->id)->where('created_at', '>=', now()->startOfMonth())->sum('credits'),
             'listings' => \App\Models\Listing::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNull('deleted_at')->whereIn('status', \App\Models\Listing::LIVE)->count(),
             'images_per_listing' => (int) \App\Models\ListingImage::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNotNull('listing_id')
@@ -56,10 +96,10 @@ class PlanLimiter
     /** @return array<string, array{label:string, limit:int, used:float|int, left:float|int|null, pct:float, unlimited:bool, display:string}> */
     public static function usage(Tenant $tenant): array
     {
-        $plan = $tenant->plan();
         $out = [];
         foreach (self::LIMIT_LABELS as $key => $label) {
-            $limit = $plan ? $plan->limit($key) : 0;
+            $limit = self::limit($tenant, $key);
+            $topup = $limit < 0 ? 0 : self::topups($tenant, $key);
             $used = self::used($tenant, $key);
             $unlimited = $limit < 0;
             $left = $unlimited ? null : max(0, $limit - $used);
@@ -74,10 +114,13 @@ class PlanLimiter
                 'left' => $left,
                 'pct' => $pct,
                 'unlimited' => $unlimited,
+                'topup' => $topup,
+                'optional' => in_array($key, self::ROLE_CAP_KEYS, true),
                 'display' => [
                     'limit' => $unlimited ? 'Unlimited' : $fmt($limit),
                     'used' => $fmt($used),
                     'left' => $unlimited ? 'Unlimited' : $fmt($left),
+                    'topup' => $topup ? '+'.$fmt($topup) : '',
                 ],
             ];
         }
@@ -107,19 +150,30 @@ class PlanLimiter
 
     public static function ensure(Tenant $tenant, string $key, int $adding = 1): void
     {
+        $usable = $tenant->subscription?->isUsable() ?? false;
+        // Every promoter keeps the free active listings, even without a running subscription.
+        if ($key === 'listings' && ! $usable) {
+            if (self::used($tenant, $key) + $adding > self::freeListings()) {
+                throw new PlanLimitException('Your subscription has expired. You can keep '.self::freeListings().' listings live for free; renew or upgrade your plan to publish more.');
+            }
+
+            return;
+        }
         self::ensureActive($tenant);
-        $limit = $tenant->plan()?->limit($key) ?? 0;
+        $limit = self::limit($tenant, $key);
         if ($limit < 0) {
             return;
         }
         if (self::used($tenant, $key) + $adding > $limit) {
             $label = self::LIMIT_LABELS[$key] ?? $key;
-            throw new PlanLimitException("Your plan allows $limit ".strtolower($label).'. Upgrade your plan to add more.');
+            $topup = isset(\App\Models\TopupPack::KEYS[$key]) ? ' Upgrade your plan or buy a top-up to add more.' : ' Upgrade your plan to add more.';
+            throw new PlanLimitException('Your plan allows '.Format::num($limit).' '.strtolower($label).'.'.$topup);
         }
     }
 
     public static function ensureUserRole(Tenant $tenant, string $baseRole): void
     {
+        self::ensure($tenant, 'users');
         if (isset(self::USER_ROLE_KEYS[$baseRole])) {
             self::ensure($tenant, self::USER_ROLE_KEYS[$baseRole]);
         }
@@ -128,12 +182,12 @@ class PlanLimiter
     public static function ensureStorage(Tenant $tenant, int $bytes): void
     {
         self::ensureActive($tenant);
-        $limitMb = $tenant->plan()?->limit('storage_mb') ?? 0;
+        $limitMb = self::limit($tenant, 'storage_mb');
         if ($limitMb < 0) {
             return;
         }
         if ($tenant->storage_used_bytes + $bytes > $limitMb * 1048576) {
-            throw new PlanLimitException('Storage limit reached ('.Format::bytes($limitMb * 1048576).'). Delete files or upgrade your plan.');
+            throw new PlanLimitException('Storage limit reached ('.Format::bytes($limitMb * 1048576).'). Delete files, buy a storage top-up or upgrade your plan.');
         }
     }
 

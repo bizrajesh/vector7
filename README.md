@@ -23,6 +23,7 @@ This guide is written for a non-developer. Follow the steps in order.
 10. [Where things are](#10-where-things-are)
 11. [Feature Update 01: listings, leads, AI search and chatbots](#11-feature-update-01-listings-leads-ai-search-and-chatbots)
 12. [Marketplace in Tamil and English, menus and the App sign-in](#12-marketplace-in-tamil-and-english-menus-and-the-app-sign-in)
+13. [Plans, top-ups and contact view charges](#13-plans-top-ups-and-contact-view-charges)
 
 ---
 
@@ -272,7 +273,7 @@ Sign in as App Admin and open **Settings**:
 4. **Payment gateway** — Razorpay or Swipe keys (test mode first). Webhook URL is shown on the screen. Without a gateway you can mark invoices paid manually.
 5. **Storage** — Local (default), Google Drive, S3, Google Cloud Storage or Azure Blob → **Test connection**.
 6. **Social accounts** — connect Instagram / Facebook / YouTube for scheduled posts and metrics.
-7. **Plans** — review Starter / Professional / Enterprise limits and prices.
+7. **Plans** — review Starter / Growth / Enterprise (storage, projects, plots, users, active listings) and prices, the **Top-up packs** and the **Contact view charges** (see [section 13](#13-plans-top-ups-and-contact-view-charges)).
 8. **SEO** — default title/description, AI-crawler decision, then **Rebuild now**.
 10. **Chatbot** — bot name, greeting (English + Tamil) and FAQ answers (Settings → AI).
 11. **Listings moderation** — check **Listings** in the App menu now and then for buyer reports; pick featured listings and layouts for the home page and approve testimonials.
@@ -422,13 +423,13 @@ Each search or chat message counts as 1 credit in **AI usage**. Searches are log
 
 ### 11.5 Plan limits
 
-| Limit | Starter | Professional | Enterprise |
+| Limit | Starter | Growth | Enterprise |
 |---|---|---|---|
-| Live listings | 10 | 100 | unlimited |
+| Live listings | 5 | 100 | unlimited |
 | Images per listing / layout | 12 | 20 | 20 |
 | Leads module | yes | yes | yes |
 
-You can edit these under App → **Plans**. A listing counts once it is published (or under offer).
+You can edit these under App → **Plans**. A listing counts once it is published (or under offer). Section 13 has the full plan items, top-ups and contact view charges.
 
 ### 11.6 New screens
 
@@ -475,3 +476,86 @@ The filter panel always submits to the menu page you are on, so the address stay
 - Each page only accepts its own users. An App user on `/workspace/login` is told to use the App team's own page, without the address being shown. A promoter on `/app/login` gets the normal "credentials do not match" message.
 - Opening any `/app/...` address while signed out goes to `/app/login`. Signing out of the App workspace returns there too. Password-reset emails and `php artisan v7:app-admin` point App users to `/app/login`.
 - Tip: bookmark `/app/login` on the App team's computers.
+
+---
+
+## 13. Plans, top-ups and contact view charges
+
+### 13.1 Upgrading an existing installation
+
+Copy the new files, then run (Laragon terminal or Hostinger SSH):
+
+```
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+The migration only **adds** tables and columns. Your data stays. It also:
+- renames the *Professional* plan to **Growth**;
+- adds the **Plots** and **Users (all roles)** limits to every plan;
+- sets Starter's active listings to **5** if it was still at the original 10;
+- adds five starter top-up packs.
+
+Each plan's old per-role user limits are added up into the new **Users (all roles)** limit, and the per-role limits become optional caps set to "no cap".
+
+### 13.2 Plans (App → Plans)
+
+| Plan item | Starter | Growth | Enterprise |
+|---|---|---|---|
+| Storage | 1 GB | 10 GB | 100 GB |
+| Projects | 2 | 10 | unlimited |
+| Plots (all layouts) | 200 | 2,000 | unlimited |
+| Users (all roles) | 5 | 20 | unlimited |
+| Active listings | 5 | 100 | unlimited |
+
+- Use **−1** for unlimited.
+- **Optional caps per role** (for example "only 1 Tenant Admin") are under the plan form's *Optional caps per role*. Leave them at −1 unless you need them.
+- **5 free listings.** Every tenant keeps **5 active listings free** (App setting), even on a plan with fewer and even after the subscription lapses. Photos can be up to **5 MB each** (App setting). Both numbers are under *Contact view charges → Listings for every promoter*.
+- **Limit messages.** When a tenant reaches a limit they see "Your plan allows … Upgrade your plan or buy a top-up to add more."
+
+### 13.3 Top-ups (App → Plans → Top-up packs)
+
+The App team designs packs that add units to one plan item: **users, projects, plots, storage (MB) or active listings**. Each pack has a monthly price, excl. GST.
+
+| Starter packs (editable) | Units | ₹ / month |
+|---|---|---|
+| 1 extra user | 1 | 199 |
+| 1 extra project | 1 | 499 |
+| 100 extra plots | 100 | 299 |
+| 5 GB extra storage | 5120 MB | 249 |
+| 5 extra active listings | 5 | 199 |
+
+- **Buying.** Tenants buy from **Settings → My plan & usage → Top-ups** and choose a quantity.
+- **How long it lasts.** A top-up runs **until the tenant's current plan period ends**. The invoice is *price × quantity × months left* (rounded up) + 18 % GST.
+- **Paying.** With a gateway, the tenant is sent to the payment page. Without one, open App → **Tenants & usage → the tenant** and press **Mark paid**.
+- **Granting free.** On the same tenant page, **Grant a free top-up** adds units at once, with an optional end date and note. Any top-up can be cancelled there.
+- **Where it shows.** Top-ups appear in the usage table as *incl. +… top-up*. Plan and top-up invoices are listed together.
+
+### 13.4 Contact view charges (App → Plans → Contact view charges)
+
+Buyers browse every listing for free. To see an owner's or promoter's **phone number**, a buyer signs in and pays a small fee online. **The fee goes to the App owner**, and the same charges apply to every tenant.
+
+| Setting | Default |
+|---|---|
+| Charge buyers to view contact numbers | On |
+| Listings (default price, GST included) | ₹49 |
+| Price by listing type (plot, flat, farm land, commercial, villa, house) | blank = default |
+| Layouts (plot projects) | ₹49 (0 = free) |
+| Unlock lasts | 30 days (0 = no end) |
+
+- **Gateway needed.** The charge only applies when **Razorpay or Swipe** is set up (Settings → Payments). Without a gateway, numbers stay free and the screen shows a warning. Payments are confirmed by the signed return from the payment page and by the same webhook as plan invoices.
+- **One payment, one property.** Each payment unlocks that property's Call, WhatsApp and Show number for that buyer, for the set number of days. Buyers see their receipts under **My account → Enquiries → Contacts you unlocked**.
+- **Revenue.** The screen lists every contact-view payment: receipt, buyer, property, owner and amount. It shows revenue and GST totals for the dates you pick, with an Excel export.
+
+### 13.5 Free call-back requests (tenant → Leads & enquiries)
+
+Every listing and layout has a free **Request a call back** form. The buyer gives their name, mobile, an optional email, **how to contact them** (phone call, WhatsApp or email) and the **best time** (any time, morning, afternoon or evening), plus an optional day and message.
+
+The request becomes a lead in the owner's **Leads & enquiries** with:
+- source *Call-back request*;
+- the buyer's mobile and email;
+- a green **Wants a call back** banner showing the mode and time;
+- a follow-up already scheduled for the time chosen.
+
+The owner also gets an email if the listing has a contact email. Filter the lead list by source *Call-back request* to see them all.
+

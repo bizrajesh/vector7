@@ -25,7 +25,7 @@ class Menu
                 ['Refunds', 'ws.refunds.index', 'refresh', 'refunds.view', 'bookings'],
                 ['Registration', 'ws.registrations.index', 'clipboard', 'registration.view', 'registration'],
                 ['Customers', 'ws.customers.index', 'users', 'tenant_customers.view', null],
-                ['Leads', 'ws.leads.index', 'chat', 'leads.view', 'leads'],
+                ['Leads & enquiries', 'ws.leads.index', 'chat', 'leads.view', 'leads'],
             ],
             'Finance' => [
                 ['Accounts', 'ws.accounts.index', 'rupee', 'accounts.view', 'accounts'],

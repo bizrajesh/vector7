@@ -1,11 +1,15 @@
 ---
-title: Leads
+title: Leads & enquiries
 audience: tenant
 route: ws.leads.index
-keywords: lead, crm, enquiry, follow-up, pipeline, kanban, call, whatsapp, site visit
+keywords: lead, crm, enquiry, call back, callback, follow-up, pipeline, kanban, call, whatsapp, site visit
 ---
-# Leads
-**Leads** collects everyone interested in your properties: enquiry forms, **Call** and **WhatsApp** clicks, **Show number**, chatbot hand-offs, AI-search contacts and bookings — plus walk-ins and phone calls you add yourself.
+# Leads & enquiries
+**Leads & enquiries** collects everyone interested in your properties: enquiry forms, **Call** and **WhatsApp** clicks, **Show number**, chatbot hand-offs, AI-search contacts and bookings — plus walk-ins and phone calls you add yourself.
+
+**Call-back requests:** buyers can ask you to contact them for free from any listing or layout. They give their name, mobile, email (optional), how to contact them (**phone call, WhatsApp or email**), the best time and an optional day. These leads show the source *Call-back request*, a green **Wants a call back** banner with their contact details, and a follow-up already scheduled for the time they chose. Filter the list by source *Call-back request* to see them all.
+
+**Paid contact views:** when a buyer pays vector7 to see your number and then calls, messages or taps *Show number*, they also arrive here as a lead. The fee goes to vector7. You pay nothing for these leads.
 
 **Pipeline:** New → Contacted → Site visit scheduled → Site visited → Negotiation → **Won** (booked / sold) or **Lost** (a reason is required). Stages can be renamed in Settings → Listings & leads.
 

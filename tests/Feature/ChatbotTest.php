@@ -46,7 +46,7 @@ class ChatbotTest extends TestCase
         $c = ChatConversation::where('scope', 'market')->firstOrFail();
         $this->assertSame(2, $c->messages()->count());
         // FAQ answer
-        $this->postJson(route('market.chat.send'), ['message' => 'Is it free for buyers?'])->assertOk()->assertJsonPath('text', 'Yes. Browsing, enquiring and booking on vector7 is free for buyers.');
+        $this->postJson(route('market.chat.send'), ['message' => 'Is it free for buyers?'])->assertOk()->assertJsonPath('text', "Browsing, requesting a call back, enquiring and booking are free. Seeing an owner's phone number straight away costs a small fee (shown on the property), paid online to vector7.");
         // Other tools read the database / settings only.
         [$faq] = MarketBot::runTool('get_faq', ['topic' => 'who do I pay']);
         $this->assertStringContainsString('directly to the promoter', $faq['answer']);
@@ -158,7 +158,7 @@ class ChatbotTest extends TestCase
         $this->actingAs($app)->getJson(route('app.assistant'))->assertOk();
         // Links in tables open the record.
         $this->assertStringContainsString('/workspace/leads/', \App\Services\WorkspaceBot::runTool($admin, 'list_leads', [])[1]['links'][0]);
-        $this->assertSame('Plan usage — Professional', \App\Services\WorkspaceBot::runTool($admin, 'usage_summary', [])[1]['title']);
+        $this->assertSame('Plan usage — Growth', \App\Services\WorkspaceBot::runTool($admin, 'usage_summary', [])[1]['title']);
     }
 
     public function test_workspace_bot_followup_needs_confirm_and_export(): void

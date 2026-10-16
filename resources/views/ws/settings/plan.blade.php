@@ -35,9 +35,9 @@
                 <p class="mt-1 text-sm text-muted">{{ $p->description }}</p>
                 <p class="mt-3 text-3xl font-extrabold">@inr($p->price)<span class="text-sm font-semibold text-muted">/{{ $p->billing_cycle === 'yearly' ? 'year' : 'month' }} + GST</span></p>
                 <ul class="mt-3 flex-1 space-y-1 text-sm">
-                    @foreach (['projects' => 'projects', 'storage_mb' => 'storage', 'ai_credits' => 'AI credits / month', 'users_tenant_sales' => 'sales users'] as $k => $l)
-                        @php($v = $p->limit($k))
-                        <li>{!! \App\Support\Icons::svg('check', 'h-4 w-4 inline text-teal-700') !!} {{ $v < 0 ? 'Unlimited' : ($k === 'storage_mb' ? \App\Support\Format::bytes($v * 1048576) : $v) }} {{ $l }}</li>
+                    @foreach (['storage_mb' => 'storage', 'projects' => 'projects', 'plots' => 'plots', 'users' => 'users (all roles)', 'listings' => 'active listings', 'ai_credits' => 'AI credits / month'] as $k => $l)
+                        @php($v = $k === 'listings' && $p->limit($k) >= 0 ? max($p->limit($k), \App\Services\PlanLimiter::freeListings()) : $p->limit($k))
+                        <li>{!! \App\Support\Icons::svg('check', 'h-4 w-4 inline text-teal-700') !!} @include('app.plans.limit-value', ['k' => $k, 'v' => $v]) {{ $l }}</li>
                     @endforeach
                 </ul>
                 @can('tenant_settings.update')
@@ -49,14 +49,46 @@
         @endforeach
     </div>
 
+    <h2 class="mb-1 mt-8 text-xl font-extrabold">Top-ups</h2>
+    <p class="mb-3 text-sm text-muted">Need a little more without changing plan? Add extra users, projects, plots, storage or listings. Prices are per month + GST; a top-up runs until your plan period ends{{ $sub && $sub->isUsable() ? ' ('.\App\Support\Format::date($sub->ends_on).')' : '' }}, so you pay for the months left in it.</p>
+    @if ($topups->isNotEmpty())
+        <div class="mb-4 flex flex-wrap gap-2">
+            @foreach ($topups as $t)
+                <span class="{{ $t->isCurrent() ? 'badge-teal' : 'badge-amber' }}">{{ $t->label() }} · {{ $t->isCurrent() ? 'until '.($t->ends_on ? \App\Support\Format::date($t->ends_on) : 'no end') : 'awaiting payment' }}</span>
+            @endforeach
+        </div>
+    @endif
+    @if (! $sub || ! $sub->isUsable())
+        <p class="text-sm text-muted">Renew your plan first — top-ups run alongside an active plan.</p>
+    @else
+        @php($monthsLeft = \App\Services\TopupService::monthsLeft($sub->ends_on))
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            @foreach ($packs as $pack)
+                <form method="POST" action="{{ route('ws.settings.topup', $pack) }}" class="card card-pad flex flex-col">
+                    @csrf
+                    <p class="eyebrow">{{ \App\Models\TopupPack::KEYS[$pack->key] ?? $pack->key }}</p>
+                    <h3 class="mt-1 font-extrabold">{{ $pack->name }}</h3>
+                    <p class="mt-2 text-2xl font-extrabold">@inr($pack->price)<span class="text-xs font-semibold text-muted">/month + GST</span></p>
+                    <p class="mt-1 flex-1 text-xs text-muted">{{ $monthsLeft }} month{{ $monthsLeft > 1 ? 's' : '' }} left in your plan → @inr($pack->price * $monthsLeft) + GST each</p>
+                    @can('tenant_settings.update')
+                        <div class="mt-3 flex items-end gap-2">
+                            <x-field name="quantity" type="number" min="1" max="100" value="1" label="Qty" id="q{{ $pack->id }}" class="w-20" />
+                            <button class="btn-primary flex-1">Buy</button>
+                        </div>
+                    @endcan
+                </form>
+            @endforeach
+        </div>
+    @endif
+
     <div class="card mt-8">
         <h2 class="section-title p-4">Invoices</h2>
         <div class="table-wrap"><table class="tbl">
             <thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse ($invoices as $inv)
-                <tr><td class="font-mono text-sm">{{ $inv->number }}</td><td>{{ $inv->plan->name }}</td><td class="text-sm">@date($inv->period_start) – @date($inv->period_end)</td>
-                    <td class="num">@inr($inv->total)</td><td><span class="{{ $inv->status === 'paid' ? 'badge-teal' : 'badge-amber' }}">{{ ucfirst($inv->status) }}</span></td>
+                <tr><td class="font-mono text-sm">{{ $inv->number }}</td><td>{{ $inv->itemLabel() }}</td><td class="text-sm">@date($inv->period_start) – @date($inv->period_end)</td>
+                    <td class="num">@inr($inv->total)</td><td><span class="{{ $inv->status === 'paid' ? 'badge-teal' : ($inv->status === 'cancelled' ? 'badge-gray' : 'badge-amber') }}">{{ ucfirst($inv->status) }}</span></td>
                     <td class="text-right"><a href="{{ route('ws.settings.invoice', $inv) }}" class="btn-ghost btn-sm">PDF</a></td></tr>
             @empty
                 <tr><td colspan="6" class="text-muted">No invoices yet.</td></tr>

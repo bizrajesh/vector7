@@ -92,7 +92,7 @@ class DemoSeeder extends Seeder
 
     private function tenantAndUsers(): void
     {
-        $plan = Plan::where('slug', 'professional')->first() ?? Plan::orderBy('sort')->first();
+        $plan = Plan::where('slug', 'growth')->first() ?? Plan::orderBy('sort')->first();
         [$tenant, $admin] = TenantProvisioner::create([
             'name' => 'Demo Promoters', 'email' => 'admin@demo.vector7.in', 'mobile' => '9840012345',
             'password' => self::PASSWORD, 'city' => 'Thanjavur', 'district' => 'Thanjavur', 'admin_name' => 'Arun Kumar (Admin)',

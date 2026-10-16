@@ -95,7 +95,7 @@
 
         <aside class="space-y-6">
             @if ($contact)
-                @include('partials.market-contact', ['kind' => 'listing', 'ownerId' => $listing->id, 'c' => \App\Http\Controllers\Market\ContactController::contactArray($contact), 'title' => $listing->title, 'src' => $src])
+                @include('partials.market-contact', ['kind' => 'listing', 'owner' => $listing, 'ownerId' => $listing->id, 'c' => \App\Http\Controllers\Market\ContactController::contactArray($contact), 'title' => $listing->title, 'src' => $src])
             @endif
             <section class="card card-pad space-y-3 text-sm">
                 @auth('customer')

@@ -48,7 +48,7 @@
                 <h2 class="section-title">3. Layout picture, photos & media</h2>
                 <x-field name="layout" type="file" label="Approved layout picture (image or PDF, up to 20 MB)" accept="image/*,application/pdf" required />
                 <div>
-                    <label class="dropzone" for="ql_images"><x-icon name="upload" class="h-6 w-6" /><span><strong>Drop site photos here</strong> or tap to choose · {{ \App\Services\PropertyMedia::MIN_IMAGES }}–{{ $maxImages }} photos, JPG / PNG / WebP up to 5 MB each</span>
+                    <label class="dropzone" for="ql_images"><x-icon name="upload" class="h-6 w-6" /><span><strong>Drop site photos here</strong> or tap to choose · {{ \App\Services\PropertyMedia::MIN_IMAGES }}–{{ $maxImages }} photos, JPG / PNG / WebP up to {{ \App\Services\PropertyMedia::maxKb() / 1024 }} MB each</span>
                         <input id="ql_images" type="file" name="images[]" multiple required accept="image/jpeg,image/png,image/webp" class="sr-only" data-dropzone></label>
                     @error('images')<p class="error">{{ $message }}</p>@enderror
                     @error('images.*')<p class="error">{{ $message }}</p>@enderror

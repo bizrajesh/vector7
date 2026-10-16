@@ -6,11 +6,11 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\SubscriptionInvoice;
 use App\Models\Tenant;
+use App\Models\TenantTopup;
 use App\Models\UsageSnapshot;
 use App\Models\User;
 use App\Support\Format;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
@@ -33,7 +33,7 @@ class SubscriptionService
             'tenant_id' => $tenant->id,
             'subscription_id' => $current?->id,
             'plan_id' => $plan->id,
-            'number' => self::invoiceNumber(),
+            'number' => self::nextInvoiceNumber(),
             'amount' => $amount,
             'tax' => $tax,
             'total' => $amount + $tax,
@@ -43,7 +43,7 @@ class SubscriptionService
         ]);
     }
 
-    private static function invoiceNumber(): string
+    public static function nextInvoiceNumber(): string
     {
         $prefix = 'V7-'.now()->format('Ym').'-';
         $n = SubscriptionInvoice::where('number', 'like', $prefix.'%')->count() + 1;
@@ -63,6 +63,13 @@ class SubscriptionService
                 return;
             }
             $invoice->update(['status' => 'paid', 'method' => $method, 'gateway_payment_id' => $paymentId, 'paid_at' => now(), 'marked_paid_by' => $by?->id]);
+            if ($invoice->kind === 'topup') {
+                TenantTopup::withoutGlobalScopes()->whereKey($invoice->tenant_topup_id)->where('status', 'pending')
+                    ->update(['status' => 'active', 'starts_on' => today(), 'ends_on' => $invoice->period_end, 'updated_at' => now()]);
+                AuditLogger::log('topup_paid', $invoice, null, ['invoice' => $invoice->number, 'method' => $method], $invoice->tenant_id);
+
+                return;
+            }
             $sub = Subscription::withoutGlobalScopes()->where('tenant_id', $invoice->tenant_id)->latest('id')->first();
             $attrs = ['plan_id' => $invoice->plan_id, 'status' => 'active', 'starts_on' => $invoice->period_start, 'ends_on' => $invoice->period_end, 'alerts_sent' => []];
             if ($sub && $sub->plan_id === $invoice->plan_id && $sub->status === 'active') {
@@ -75,62 +82,26 @@ class SubscriptionService
 
     public static function gatewayName(): string
     {
-        return (string) AppSettings::get('payment.gateway', 'none');
+        return PaymentLinks::gateway();
     }
 
-    /** Create a hosted payment link and return its URL. */
+    /** Create a hosted payment link for a plan or top-up invoice and return its URL. */
     public static function paymentLink(SubscriptionInvoice $invoice, Tenant $tenant): string
     {
-        $gateway = self::gatewayName();
-        $callback = route('ws.settings.invoice.verify', $invoice);
-        if ($gateway === 'razorpay') {
-            $r = Http::withBasicAuth((string) AppSettings::get('payment.razorpay_key_id'), (string) AppSettings::get('payment.razorpay_key_secret'))
-                ->acceptJson()->timeout(30)->post('https://api.razorpay.com/v1/payment_links', [
-                    'amount' => (int) round($invoice->total * 100),
-                    'currency' => 'INR',
-                    'reference_id' => $invoice->number,
-                    'description' => 'vector7 '.$invoice->plan->name.' plan '.Format::date($invoice->period_start).' – '.Format::date($invoice->period_end),
-                    'customer' => ['name' => $tenant->name, 'email' => $tenant->email, 'contact' => $tenant->contact],
-                    'notify' => ['email' => true],
-                    'callback_url' => $callback,
-                    'callback_method' => 'get',
-                ]);
-            if (! $r->successful()) {
-                throw new RuntimeException('Razorpay: '.$r->json('error.description', 'could not create the payment link'));
-            }
-            $invoice->update(['gateway_order_id' => $r->json('id'), 'method' => 'razorpay']);
-
-            return (string) $r->json('short_url');
+        if (! PaymentLinks::enabled()) {
+            throw new RuntimeException('Online payment is not configured. Contact vector7 to activate your plan.');
         }
-        if ($gateway === 'swipe') {
-            $base = rtrim((string) AppSettings::get('payment.swipe_api_base', 'https://app.getswipe.in/api/partner/v2'), '/');
-            $r = Http::withToken((string) AppSettings::get('payment.swipe_api_key'))->acceptJson()->timeout(30)->post($base.'/payment_links', [
-                'amount' => round($invoice->total, 2),
-                'currency' => 'INR',
-                'reference_id' => $invoice->number,
-                'description' => 'vector7 '.$invoice->plan->name.' plan',
-                'customer_name' => $tenant->name,
-                'customer_email' => $tenant->email,
-                'customer_phone' => $tenant->contact,
-                'callback_url' => $callback,
-            ]);
-            if (! $r->successful()) {
-                throw new RuntimeException('Swipe: could not create the payment link (HTTP '.$r->status().').');
-            }
-            $invoice->update(['gateway_order_id' => (string) ($r->json('data.id') ?? $r->json('id')), 'method' => 'swipe']);
+        $what = $invoice->kind === 'topup' ? $invoice->itemLabel() : 'vector7 '.$invoice->plan->name.' plan '.Format::date($invoice->period_start).' – '.Format::date($invoice->period_end);
+        $link = PaymentLinks::create($invoice->number, (float) $invoice->total, $what,
+            ['name' => $tenant->name, 'email' => $tenant->email, 'phone' => $tenant->contact], route('ws.settings.invoice.verify', $invoice));
+        $invoice->update(['gateway_order_id' => $link['id'], 'method' => $link['gateway']]);
 
-            return (string) ($r->json('data.short_url') ?? $r->json('data.url') ?? $r->json('short_url') ?? $r->json('url'));
-        }
-        throw new RuntimeException('Online payment is not configured. Contact vector7 to activate your plan.');
+        return $link['url'];
     }
 
-    /** Razorpay callback signature: HMAC-SHA256(plink_id|reference_id|status|payment_id, key_secret). */
     public static function verifyRazorpayCallback(array $q): bool
     {
-        $payload = ($q['razorpay_payment_link_id'] ?? '').'|'.($q['razorpay_payment_link_reference_id'] ?? '').'|'.($q['razorpay_payment_link_status'] ?? '').'|'.($q['razorpay_payment_id'] ?? '');
-        $expected = hash_hmac('sha256', $payload, (string) AppSettings::get('payment.razorpay_key_secret'));
-
-        return isset($q['razorpay_signature']) && hash_equals($expected, (string) $q['razorpay_signature']);
+        return PaymentLinks::verifyRazorpayCallback($q);
     }
 
     /** Webhook signature: HMAC-SHA256 of the raw body with the webhook secret. */
