@@ -49,6 +49,9 @@
                 @unless ($u->isAppUser())
                     <a href="{{ route('home') }}" class="btn-ghost btn-sm hidden sm:inline-flex" target="_blank" rel="noopener">{!! \App\Support\Icons::svg('globe', 'h-4 w-4') !!} Marketplace</a>
                 @endunless
+                @if (! $u->isAppUser() && \App\Services\WorkspaceBot::enabledFor($u))
+                    <button type="button" class="btn-ghost btn-sm" data-chat-open aria-expanded="false">{!! \App\Support\Icons::svg('sparkles', 'h-4 w-4') !!} <span class="hidden sm:inline">Assistant</span></button>
+                @endif
                 <details class="relative" data-dropdown>
                     <summary class="relative list-none cursor-pointer rounded-lg p-2 hover:bg-page" aria-label="Notifications ({{ count($alerts) }})">
                         <x-icon name="bell" />
@@ -106,5 +109,8 @@
         </div>
     </div>
 </div>
+@if (! $u->isAppUser() && \App\Services\WorkspaceBot::enabledFor($u))
+    @include('partials.chat-widget', ['bot' => 'workspace', 'historyUrl' => route('ws.assistant'), 'sendUrl' => route('ws.assistant.send'), 'title' => 'Workspace assistant'])
+@endif
 </body>
 </html>

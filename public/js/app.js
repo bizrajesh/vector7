@@ -709,6 +709,11 @@
 
 
   /* ---------- Chatbots (spec 17.9 marketplace, 17.10 workspace): one panel, JSON endpoints ---------- */
+  var lastField = null;
+  document.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && t.type === 'text')) && !t.closest('[data-chat]')) lastField = t;
+  });
   function initChat() {
     $$('[data-chat]').forEach(function (root) {
       var panel = $('[data-chat-panel]', root), log = $('[data-chat-log]', root), form = $('[data-chat-form]', root), input = $('input', form);
@@ -765,8 +770,13 @@
           });
         } else if (a.type === 'draft') {
           box.innerHTML = '<p class="text-xs font-semibold">' + esc(a.label || 'Draft') + '</p><textarea class="input mt-1 h-32 text-xs">' + esc(a.text) + '</textarea>' +
-            '<div class="mt-2 flex gap-2"><button type="button" class="btn-light btn-sm" data-copy>Copy</button>' + (a.apply_url ? '<a class="btn-primary btn-sm" href="' + esc(a.apply_url) + '">' + esc(a.apply_label || 'Open') + '</a>' : '') + '</div>';
+            '<div class="mt-2 flex gap-2"><button type="button" class="btn-light btn-sm" data-copy>Copy</button>' + (a.apply ? '<button type="button" class="btn-primary btn-sm" data-apply>Apply to field</button>' : '') + (a.apply_url ? '<a class="btn-primary btn-sm" href="' + esc(a.apply_url) + '">' + esc(a.apply_label || 'Open') + '</a>' : '') + '</div>';
           $('[data-copy]', box).addEventListener('click', function () { var t = $('textarea', box); t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } });
+          var ap = $('[data-apply]', box);
+          if (ap) ap.addEventListener('click', function () {
+            if (!lastField || !document.body.contains(lastField)) { alertBox('Click the text box on the page you want to fill, then press Apply again.'); return; }
+            lastField.value = $('textarea', box).value; lastField.dispatchEvent(new Event('input', { bubbles: true })); lastField.focus();
+          });
         } else if (a.type === 'confirm') {
           box.innerHTML = '<p class="text-sm">' + esc(a.summary) + '</p><div class="mt-2 flex gap-2"><button type="button" class="btn-primary btn-sm" data-yes>Confirm</button><button type="button" class="btn-ghost btn-sm" data-no>Cancel</button></div><p class="error hidden" data-err></p>';
           $('[data-yes]', box).addEventListener('click', function () {

@@ -136,6 +136,11 @@ Route::middleware(['auth:web', 'auth.session', 'staff'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('workspace')->name('ws.')->group(function () {
+    // Workspace assistant (spec 17.10) — permission, plan and per-workspace switch checked in the controller.
+    Route::get('/assistant', [Tenant\AssistantController::class, 'history'])->name('assistant');
+    Route::post('/assistant', [Tenant\AssistantController::class, 'send'])->middleware('throttle:chat')->name('assistant.send');
+    Route::post('/assistant/followup', [Tenant\AssistantController::class, 'followup'])->name('assistant.followup');
+    Route::get('/assistant/export/{message}', [Tenant\AssistantController::class, 'export'])->name('assistant.export');
     Route::get('/', [Tenant\DashboardController::class, 'index'])->middleware('perm:dashboard.view')->name('dashboard');
     Route::get('/notifications', [Tenant\DashboardController::class, 'notifications'])->name('notifications');
 

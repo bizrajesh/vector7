@@ -238,10 +238,10 @@ class MarketBot
 
             return ['text' => $text, 'cards' => [], 'action' => null, 'used_ai' => false];
         }
-        $note = $res['relaxed'] ? ' ('.implode('; ', $res['relaxed']).')' : '';
+        $note = $res['relaxed'] ? ' — I widened the search: '.implode('; ', $res['relaxed']) : '';
         $text = $items->isEmpty()
             ? ($lang === 'ta' ? 'பொருந்தும் சொத்துகள் இப்போது இல்லை. பட்ஜெட் அல்லது இடத்தை மாற்றி முயற்சிக்கவும்.' : 'Nothing matches yet. Try a wider budget or another place, or save the search to get an email when something is listed.')
-            : ($lang === 'ta' ? 'இவை பொருந்துகின்றன'.$note.':' : 'Here are '.$items->count().' matching properties'.$note.':');
+            : ($lang === 'ta' ? 'இவை பொருந்துகின்றன'.$note.'.' : ($items->count() === 1 ? 'Here is 1 matching property' : 'Here are '.$items->count().' matching properties').$note.'.');
 
         return ['text' => $text, 'cards' => $items->map(fn ($i) => self::card($i))->all(), 'action' => null, 'used_ai' => false];
     }

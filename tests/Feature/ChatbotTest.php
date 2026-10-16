@@ -93,4 +93,86 @@ class ChatbotTest extends TestCase
         $this->assertNull(ChatConversation::find($old->id));
         $this->assertSame(1, ChatConversation::count());
     }
+
+    // ------------------------------------------------------------------ 17.10 workspace assistant
+
+    public function test_workspace_bot_tools_respect_role_and_tenant(): void
+    {
+        [$tenant, $admin] = $this->makeTenant('WB Co');
+        $sales = $this->makeUser($tenant, 'tenant_sales');
+        $accounts = $this->makeUser($tenant, 'tenant_account');
+        $mine = \App\Services\LeadService::capture($tenant->id, 'manual', ['name' => 'Own Lead', 'mobile' => '9000000011']);
+        $other = \App\Services\LeadService::capture($tenant->id, 'manual', ['name' => 'Colleague Lead', 'mobile' => '9000000012']);
+        $s2 = $this->makeUser($tenant, 'tenant_sales');
+        app(\App\Support\Tenancy::class)->run($tenant, function () use ($mine, $other, $sales, $s2) {
+            \App\Services\LeadService::assign($mine, $sales);
+            \App\Services\LeadService::assign($other, $s2);
+        });
+        [$t2, $admin2] = $this->makeTenant('WB Other');
+        $foreign = \App\Services\LeadService::capture($t2->id, 'manual', ['name' => 'Foreign Lead', 'mobile' => '9000000013']);
+
+        // Sales: own + unassigned leads only; Support: no money data.
+        [$res, $table] = \App\Services\WorkspaceBot::runTool($sales, 'list_leads', []);
+        $this->assertSame(['Own Lead'], array_column($res['leads'], 'name'));
+        $this->assertSame('Leads', $table['title']);
+        $support = $this->makeUser($tenant, 'support');
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'expenses_total', [])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'instalments_due', ['period' => 'overdue'])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($sales, 'lead_details', ['lead_code' => $other->lead_code])[0]);
+        // Accounts: expenses yes, leads no.
+        $this->assertArrayHasKey('total', \App\Services\WorkspaceBot::runTool($accounts, 'expenses_total', [])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($accounts, 'list_leads', [])[0]);
+        // Admin sees all of their own tenant, never another tenant's.
+        $names = array_column(\App\Services\WorkspaceBot::runTool($admin, 'list_leads', [])[0]['leads'], 'name');
+        $this->assertEqualsCanonicalizing(['Own Lead', 'Colleague Lead'], $names);
+        // (lead codes are per workspace, so the same code may exist in both — it must resolve to this workspace's lead or nothing)
+        $this->assertNotSame('Foreign Lead', \App\Services\WorkspaceBot::runTool($admin, 'lead_details', ['lead_code' => $foreign->lead_code])[0]['name'] ?? null);
+        $this->assertSame('Foreign Lead', \App\Services\WorkspaceBot::runTool($admin2, 'lead_details', ['lead_code' => $foreign->lead_code])[0]['name']);
+        // The tool list sent to Claude only has allowed tools.
+        $this->enableAi();
+        Http::fake(['api.anthropic.com/*' => Http::response(self::api([['type' => 'text', 'text' => 'Hello']]))]);
+        $this->actingAs($accounts)->postJson(route('ws.assistant.send'), ['message' => 'hi'])->assertOk();
+        Http::assertSent(fn ($r) => str_contains($r->body(), 'expenses_total') && ! str_contains($r->body(), 'list_leads'));
+    }
+
+    public function test_workspace_bot_followup_needs_confirm_and_export(): void
+    {
+        [$tenant, $admin] = $this->makeTenant('WB Confirm');
+        $lead = \App\Services\LeadService::capture($tenant->id, 'manual', ['name' => 'Visit Lead', 'mobile' => '9000000021']);
+        $this->enableAi();
+        $due = now()->addDay()->setTime(11, 0)->format('Y-m-d H:i');
+        Http::fake(['api.anthropic.com/*' => Http::sequence()
+            ->push(self::api([['type' => 'tool_use', 'id' => 'a', 'name' => 'propose_followup', 'input' => ['lead_code' => $lead->lead_code, 'due_at' => $due, 'kind' => 'site_visit', 'notes' => 'Bring EC copy']]]))
+            ->push(self::api([['type' => 'text', 'text' => 'Please confirm the site visit.']]))
+            ->push(self::api([['type' => 'tool_use', 'id' => 'b', 'name' => 'list_leads', 'input' => []]]))
+            ->push(self::api([['type' => 'text', 'text' => 'You have 1 lead.']])),
+        ]);
+        $r = $this->actingAs($admin)->postJson(route('ws.assistant.send'), ['message' => 'Schedule a site visit for '.$lead->lead_code.' tomorrow 11am'])->assertOk();
+        $this->assertSame('confirm', $r->json('action.type'));
+        $this->assertSame(0, \App\Models\LeadFollowup::withoutGlobalScopes()->count(), 'Nothing is written before Confirm.');
+        $this->actingAs($admin)->postJson($r->json('action.url'), $r->json('action.payload'))->assertOk();
+        $this->assertSame(1, \App\Models\LeadFollowup::withoutGlobalScopes()->where('lead_id', $lead->id)->where('kind', 'site_visit')->count());
+
+        $r = $this->actingAs($admin)->postJson(route('ws.assistant.send'), ['message' => 'list my leads'])->assertOk();
+        $export = $r->json('table.export');
+        $this->assertNotEmpty($export);
+        $this->actingAs($admin)->get($export)->assertOk()->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->actingAs($this->makeUser($tenant, 'tenant_manager'))->get($export)->assertNotFound();
+    }
+
+    public function test_ai_credit_limit_blocks_workspace_bot_and_tenant_switch(): void
+    {
+        [$tenant, $admin] = $this->makeTenant('WB Credits');
+        $this->enableAi();
+        Http::fake();
+        \App\Models\AiUsageLog::create(['tenant_id' => $tenant->id, 'feature' => 'workspace_chat', 'model' => 'x', 'credits' => 500, 'status' => 'ok']);
+        $r = $this->actingAs($admin)->postJson(route('ws.assistant.send'), ['message' => 'how do I add a listing'])->assertOk();
+        $this->assertStringContainsString('credits', strtolower($r->json('text')));
+        $this->assertStringContainsString('Property listings', $r->json('text'));
+        Http::assertNothingSent();
+        // Tenant Admin switches the assistant off.
+        $tenant->setting()->update(['workspace_bot_enabled' => false]);
+        $this->actingAs($admin)->postJson(route('ws.assistant.send'), ['message' => 'hi'])->assertForbidden();
+        $this->actingAs($admin)->get(route('ws.dashboard'))->assertOk()->assertDontSee('data-chat-open', false);
+    }
 }
