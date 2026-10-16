@@ -47,6 +47,18 @@ class ChatbotTest extends TestCase
         $this->assertSame(2, $c->messages()->count());
         // FAQ answer
         $this->postJson(route('market.chat.send'), ['message' => 'Is it free for buyers?'])->assertOk()->assertJsonPath('text', 'Yes. Browsing, enquiring and booking on vector7 is free for buyers.');
+        // Other tools read the database / settings only.
+        [$faq] = MarketBot::runTool('get_faq', ['topic' => 'who do I pay']);
+        $this->assertStringContainsString('directly to the promoter', $faq['answer']);
+        [$info] = MarketBot::runTool('get_promoter_public_info', ['key' => 'L:'.$l->id]);
+        $this->assertSame($tenant->name, $info['name']);
+        $this->assertArrayNotHasKey('mobile', $info);
+        $this->assertArrayHasKey('services', MarketBot::runTool('get_services', [])[0]);
+        $p = LaunchTest::readyProject($tenant);
+        $p->update(['status' => 'launched', 'launched_at' => now()]);
+        app(\App\Support\Tenancy::class)->run($tenant, fn () => \App\Models\Plot::create(['tenant_id' => $tenant->id, 'project_id' => $p->id, 'plot_no' => '9', 'patta_number' => '9', 'size_sqft' => 1200, 'facing' => 'East', 'rate_per_sqft' => 1000]));
+        $this->assertSame('9', MarketBot::runTool('get_layout_plots', ['key' => 'P:'.$p->id, 'facing' => 'East'])[0]['plots'][0]['plot_no']);
+        $this->assertSame([], MarketBot::runTool('get_layout_plots', ['key' => 'P:'.$p->id, 'facing' => 'West'])[0]['plots']);
         // Sold listings never come back.
         $l->update(['status' => 'sold']);
         $this->postJson(route('market.chat.send'), ['message' => '2 bhk flat in Thanjavur'])->assertOk()->assertJsonCount(0, 'cards');
@@ -58,7 +70,7 @@ class ChatbotTest extends TestCase
         $l = ListingsMarketplaceTest::makeListing($tenant);
         $this->enableAi();
         Http::fake(['api.anthropic.com/*' => Http::sequence()
-            ->push(self::api([['type' => 'tool_use', 'id' => 't1', 'name' => 'search_properties', 'input' => ['types' => ['flat'], 'places' => ['Thanjavur']]]]))
+            ->push(self::api([['type' => 'tool_use', 'id' => 't1', 'name' => 'search_listings', 'input' => ['types' => ['flat'], 'places' => ['Thanjavur']]]]))
             ->push(self::api([['type' => 'text', 'text' => 'I found the Sunny 2 BHK Flat for you.']]))
             ->push(self::api([['type' => 'tool_use', 'id' => 't2', 'name' => 'create_lead', 'input' => ['key' => 'L:'.$l->id, 'note' => 'Site visit Sunday']]]))
             ->push(self::api([['type' => 'text', 'text' => 'Please confirm below and the owner will call you.']])),
@@ -115,12 +127,15 @@ class ChatbotTest extends TestCase
         [$res, $table] = \App\Services\WorkspaceBot::runTool($sales, 'list_leads', []);
         $this->assertSame(['Own Lead'], array_column($res['leads'], 'name'));
         $this->assertSame('Leads', $table['title']);
+        // A Sales user can't get accounts totals (spec 17.13).
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($sales, 'expense_summary', [])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($sales, 'project_summary', ['project' => 'x'])[0]);
         $support = $this->makeUser($tenant, 'support');
-        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'expenses_total', [])[0]);
-        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'instalments_due', ['period' => 'overdue'])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'expense_summary', [])[0]);
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($support, 'list_due_instalments', ['period' => 'overdue'])[0]);
         $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($sales, 'lead_details', ['lead_code' => $other->lead_code])[0]);
         // Accounts: expenses yes, leads no.
-        $this->assertArrayHasKey('total', \App\Services\WorkspaceBot::runTool($accounts, 'expenses_total', [])[0]);
+        $this->assertArrayHasKey('total', \App\Services\WorkspaceBot::runTool($accounts, 'expense_summary', [])[0]);
         $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($accounts, 'list_leads', [])[0]);
         // Admin sees all of their own tenant, never another tenant's.
         $names = array_column(\App\Services\WorkspaceBot::runTool($admin, 'list_leads', [])[0]['leads'], 'name');
@@ -132,7 +147,18 @@ class ChatbotTest extends TestCase
         $this->enableAi();
         Http::fake(['api.anthropic.com/*' => Http::response(self::api([['type' => 'text', 'text' => 'Hello']]))]);
         $this->actingAs($accounts)->postJson(route('ws.assistant.send'), ['message' => 'hi'])->assertOk();
-        Http::assertSent(fn ($r) => str_contains($r->body(), 'expenses_total') && ! str_contains($r->body(), 'list_leads'));
+        Http::assertSent(fn ($r) => str_contains($r->body(), 'expense_summary') && ! str_contains($r->body(), 'list_leads'));
+        // Workspace users never get App tools, App users never get workspace data tools.
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($admin, 'app_tenants', [])[0]);
+        $app = $this->appAdmin();
+        $this->assertArrayHasKey('error', \App\Services\WorkspaceBot::runTool($app, 'list_leads', [])[0]);
+        [$res, $table] = \App\Services\WorkspaceBot::runTool($app, 'app_tenants', ['search' => 'WB']);
+        $this->assertEqualsCanonicalizing(['WB Co', 'WB Other'], array_column($res['tenants'], 'name'));
+        $this->assertCount(2, $table['links']);
+        $this->actingAs($app)->getJson(route('app.assistant'))->assertOk();
+        // Links in tables open the record.
+        $this->assertStringContainsString('/workspace/leads/', \App\Services\WorkspaceBot::runTool($admin, 'list_leads', [])[1]['links'][0]);
+        $this->assertSame('Plan usage — Professional', \App\Services\WorkspaceBot::runTool($admin, 'usage_summary', [])[1]['title']);
     }
 
     public function test_workspace_bot_followup_needs_confirm_and_export(): void
@@ -169,6 +195,8 @@ class ChatbotTest extends TestCase
         $r = $this->actingAs($admin)->postJson(route('ws.assistant.send'), ['message' => 'how do I add a listing'])->assertOk();
         $this->assertStringContainsString('credits', strtolower($r->json('text')));
         $this->assertStringContainsString('Property listings', $r->json('text'));
+        $this->assertSame('link', $r->json('action.type'));
+        $this->assertSame(route('ws.settings.plan'), $r->json('action.url'));
         Http::assertNothingSent();
         // Tenant Admin switches the assistant off.
         $tenant->setting()->update(['workspace_bot_enabled' => false]);

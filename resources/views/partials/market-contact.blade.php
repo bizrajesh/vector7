@@ -1,12 +1,12 @@
 {{-- Public contact block (spec 17.5). Vars: $kind ('listing'|'project'), $ownerId, $c (['name','mobile','whatsapp','email','modes']), $title, $src --}}
 @php
     $revealed = session('revealed')[$kind.':'.$ownerId] ?? null;
-    $person = session('contact_person');
     $customer = auth('customer')->user();
+    $person = session('contact_person') ?? ($customer?->mobile ? ['name' => $customer->name, 'mobile' => $customer->mobile] : null);
     $modes = $c['modes'];
     $formId = 'cf_'.$kind.$ownerId;
 @endphp
-<section class="card card-pad" aria-labelledby="contact-h" data-contact data-url="{{ route('market.contact.reveal', [$kind, $ownerId]) }}" data-known="{{ $person ? '1' : '0' }}">
+<section class="card card-pad scroll-mt-24" id="contact" aria-labelledby="contact-h" data-contact data-url="{{ route('market.contact.reveal', [$kind, $ownerId]) }}" data-known="{{ $person ? '1' : '0' }}">
     <h2 id="contact-h" class="font-extrabold">Contact {{ $kind === 'project' ? 'the promoter' : 'the owner' }}</h2>
     <p class="mt-1 text-sm"><strong>{{ $c['name'] }}</strong></p>
     @if (in_array('call', $modes, true) || in_array('whatsapp', $modes, true))

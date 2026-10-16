@@ -1,6 +1,6 @@
 # vector7 — Realty Manage Portal
 
-Multi-tenant SaaS for **layout promoters** (farmland → approved residential plots): public marketplace, App workspace (platform owner) and a Tenant workspace per promoter.
+Multi-tenant SaaS for **layout promoters** (farmland → approved residential plots) and property owners: a public marketplace (layouts, plots, flats, villas, houses, farm land, commercial space), an App workspace (platform owner) and a Tenant workspace per promoter, with a Leads CRM, AI search and two AI assistants.
 
 - **Stack:** PHP 8.3+, Laravel 13, MySQL 8 / MariaDB 10.6+, Blade + Tailwind CSS 3 (pre-built), plain JavaScript, Chart.js, dompdf, OpenSpout, smalot/pdfparser, PHP GD, Anthropic Claude API.
 - **No Node.js, Redis, Supervisor or workers on the server.** Everything runs from **one cron entry every minute**.
@@ -21,6 +21,7 @@ This guide is written for a non-developer. Follow the steps in order.
 8. [Running the tests](#8-running-the-tests)
 9. [Troubleshooting](#9-troubleshooting)
 10. [Where things are](#10-where-things-are)
+11. [Feature Update 01: listings, leads, AI search and chatbots](#11-feature-update-01-listings-leads-ai-search-and-chatbots)
 
 ---
 
@@ -246,7 +247,7 @@ hPanel → **Advanced → Cron Jobs** → **Custom** → run **every minute** (`
 /usr/bin/php /home/USER/vector7/artisan schedule:run >> /dev/null 2>&1
 ```
 
-This single entry runs everything: emails (the queue), booking expiry and reminders, instalment due/overdue notices, offer expiry, subscription and usage alerts, storage checks, scheduled social posts, social metrics, saved-requirement matching and the daily backup.
+This single entry runs everything: emails (the queue), booking expiry and reminders, instalment due/overdue notices, offer expiry, subscription and usage alerts, storage checks, scheduled social posts, social metrics, saved-requirement and saved-search matching, lead follow-up reminders (9:00 digest and 15 minutes before each follow-up), the daily chatbot clean-up (conversations older than 90 days) and the daily backup.
 
 ### 4.7 HTTPS
 
@@ -266,12 +267,14 @@ Sign in as App Admin and open **Settings**:
 
 1. **Organisation** — name, logo, address, support email, social links (used in the footer, emails and PDFs).
 2. **SMTP** — confirm and click **Send test email**.
-3. **AI** — paste the Anthropic API key, keep the model `claude-sonnet-5-5` (or change it), set a monthly cap. Without a key, AI buttons fall back to built-in templates.
+3. **AI** — paste the Anthropic API key, keep the model `claude-sonnet-5-5` (or change it), set a monthly cap. Then set the three AI groups — **Marketplace AI search**, **Marketplace chatbot** and **Workspace assistant** — each with an on/off switch, a **daily cap** and an optional model (see [section 11.4](#114-ai-settings-and-caps)). Without a key, AI buttons fall back to built-in templates and search/chat fall back to keyword search.
 4. **Payment gateway** — Razorpay or Swipe keys (test mode first). Webhook URL is shown on the screen. Without a gateway you can mark invoices paid manually.
 5. **Storage** — Local (default), Google Drive, S3, Google Cloud Storage or Azure Blob → **Test connection**.
 6. **Social accounts** — connect Instagram / Facebook / YouTube for scheduled posts and metrics.
 7. **Plans** — review Starter / Professional / Enterprise limits and prices.
 8. **SEO** — default title/description, AI-crawler decision, then **Rebuild now**.
+10. **Chatbot** — bot name, greeting (English + Tamil) and FAQ answers (Settings → AI).
+11. **Listings moderation** — check **Listings** in the App menu now and then for buyer reports; pick featured listings and layouts for the home page and approve testimonials.
 9. **Prerequisites** — the App masters are already imported from the template; tenants copy them during setup.
 
 ---
@@ -346,3 +349,94 @@ The suite covers every business rule in the spec: double booking, booking expiry
 | `routes/console.php` | Scheduled jobs |
 | `deploy/hostinger/root.htaccess` | Option B for Hostinger |
 | `docs/DECISIONS.md` | Choices made where the spec was open |
+
+---
+
+## 11. Feature Update 01: listings, leads, AI search and chatbots
+
+### 11.1 Upgrading an existing installation (Laragon or Hostinger)
+
+The update only **adds** tables and columns; existing data is kept. Back up first, then:
+
+```
+php artisan down
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan optimize
+php artisan seo:build
+php artisan up
+```
+
+The migrations also:
+
+- copy every promoter's enquiries into **Leads** (the old Enquiries page now redirects to Leads);
+- move existing project gallery photos into the new photo manager;
+- add the plan limits *Listings* and *Images per listing*, and the *Leads* module, to every plan;
+- seed the features list (amenities) and the default lead stages, contact settings and WhatsApp templates for every workspace.
+
+On Laragon, run `php artisan migrate` (no `--force`). To reload the demo data with sample listings of every type, a quick-launched layout, leads and testimonials, use `php artisan migrate:fresh --seed` and then `php artisan db:seed --class=DemoSeeder`. **This erases the database.**
+
+### 11.2 Contact modes (per listing and per layout)
+
+Every listing and layout has a **contact block**: contact person, mobile, WhatsApp number and email, plus three modes that can each be switched on or off:
+
+| Mode | What the buyer sees | What happens |
+|---|---|---|
+| **Call** | Masked number (98XXX XX345), **Call** and **Show number** | The buyer gives their name and mobile and ticks consent once per visit. The number is then shown or dialled. |
+| **WhatsApp** | **WhatsApp** button | Opens WhatsApp with the message *"Hi, I'm interested in {title} ({code}) on vector7.in – {link}"*. |
+| **Email** | **Send an email enquiry** form | The message is emailed to the contact email. |
+
+Every contact creates or updates a **lead**. Leads are merged by mobile number or email, and the source is recorded (Call, WhatsApp, Show number, Enquiry, Chatbot, AI search). Number reveals are limited to 5 a minute and 30 a day per visitor.
+
+Default contact details and modes for new listings: **Workspace → Settings → Listings & leads**.
+
+### 11.3 Lead assignment
+
+**Settings → Listings & leads**:
+
+- **Auto-assign new leads (round-robin)** — when on, each new lead goes to the next active **Sales** user in turn, and that user is emailed. When off, new leads stay **Unassigned** and the **Sales Team** notification group is emailed.
+- **Lead stages** — rename, recolour and reorder the stages. *Won* and *Lost* close a lead; *Lost* asks for a reason.
+- **WhatsApp templates** — messages that Sales can send from a lead with one tap. Placeholders: `{name}` (lead), `{listing}` (property they asked about), `{user}` (you), `{promoter}` (workspace name).
+
+Who sees what: **Sales** see only leads assigned to them plus unassigned leads. **Manager** and **Admin** see all leads. **Support** can view and update leads but not delete them.
+
+Reminders (sent by the cron job): at **9:00 every morning**, each user gets a list of their follow-ups due today or overdue, and the Management group gets a daily summary. A reminder is also sent **15 minutes before** each scheduled follow-up or site visit.
+
+### 11.4 AI settings and caps
+
+App Admin → **Settings → AI**:
+
+| Setting | Default | Notes |
+|---|---|---|
+| Anthropic API key | — | Stored encrypted. |
+| Default model | `claude-sonnet-5-5` | Used by any group that has no model of its own. |
+| Monthly cap (all AI) | 0 = no cap | Counts every AI call on the platform. |
+| **Marketplace AI search** — on/off, daily cap, model | on, 500/day | Turns plain words (English or Tamil) into filters and ranks the top 30 results. Results always come from the database; the AI never invents properties. Same search within 1 hour comes from the cache. When the search is off or over its cap, it falls back to keyword search. |
+| **Marketplace chatbot** — on/off, daily cap, model | on, 1000/day | The floating "Ask Vee" assistant. Off hides the button. Over the cap, it answers with keyword search and the FAQ. |
+| **Workspace assistant** — on/off, daily cap, model | on, 2000/day | Also uses each workspace's monthly **AI credits** from its plan. A Tenant Admin can switch it off in Settings → Listings & leads. |
+| Chatbot name / greeting / FAQ | Vee | The FAQ is one question per line, then the answer, with a blank line between entries. |
+
+Each search or chat message counts as 1 credit in **AI usage**. Searches are logged (App → **Chatbot conversations → AI search log**), and chatbot conversations can be read and exported under App → **Chatbot conversations**. Both are kept for 90 days.
+
+### 11.5 Plan limits
+
+| Limit | Starter | Professional | Enterprise |
+|---|---|---|---|
+| Live listings | 10 | 100 | unlimited |
+| Images per listing / layout | 12 | 20 | 20 |
+| Leads module | yes | yes | yes |
+
+You can edit these under App → **Plans**. A listing counts once it is published (or under offer).
+
+### 11.6 New screens
+
+| Where | Screen |
+|---|---|
+| Marketplace | Home (AI search, categories, featured, districts, testimonials) · `/search` (grid / list / map) · `/buy/{type}/{city}` category pages · listing pages · compare · My account → Shortlist & searches |
+| Workspace | Projects → **Quick launch layout** · **Property listings** · **Leads** (board, list, reports) · Settings → **Listings & leads** · **Assistant** (top bar) · **Help** (every screen links to its help page) |
+| App | **Listings** (moderation, reports, featured, testimonials) · **Chatbot conversations** · Settings → AI groups |
+
+Images are converted to WebP (1600 px plus a 400 px thumbnail), photo location data (EXIF) is removed, and the workspace watermark is added if it is switched on. Maps use Leaflet with OpenStreetMap tiles; no API key is needed.
+
+All the decisions made in this update are listed in `docs/DECISIONS.md` (entries 32–48).

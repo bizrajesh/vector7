@@ -394,6 +394,8 @@ class ListingsMarketplaceTest extends TestCase
         Http::fake(['api.anthropic.com/*' => Http::response([], 500)]);
         $this->get(route('market.search', ['q' => '2 bhk flat in thanjavur under 50 lakh']))->assertOk()->assertSee('2 BHK in Thanjavur within budget');
         $this->assertTrue(AiSearchLog::latest('id')->first()->cached);
+        $this->actingAs($this->appAdmin())->get(route('app.chats.searches'))->assertOk()->assertSee('2 bhk flat in thanjavur under 50 lakh');
+        $this->actingAs($this->appAdmin())->get(route('app.chats.searches', ['export' => 'xlsx']))->assertOk();
     }
 
     public function test_ai_search_falls_back_when_ai_is_off_and_relaxes_filters(): void

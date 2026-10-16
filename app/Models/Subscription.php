@@ -24,6 +24,7 @@ class Subscription extends Model
     }
 
     public function plan(): BelongsTo { return $this->belongsTo(Plan::class); }
+    public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
     public function invoices(): HasMany { return $this->hasMany(SubscriptionInvoice::class); }
     public function daysLeft(): int { return max(0, (int) now()->startOfDay()->diffInDays($this->ends_on, false)); }
     public function isUsable(): bool { return in_array($this->status, ['trial', 'active', 'past_due'], true); }

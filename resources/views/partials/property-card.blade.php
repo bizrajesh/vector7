@@ -43,6 +43,13 @@
             <div class="mt-2 flex flex-wrap gap-1">@foreach ($item['features'] as $f)<span class="chip chip-sm"><x-icon :name="$f['icon']" class="h-3.5 w-3.5" /> {{ $f['name'] }}</span>@endforeach</div>
         @endif
         @if (! empty($item['why']))<p class="mt-2 rounded-lg bg-teal-50 px-2 py-1 text-xs text-teal-900"><x-icon name="sparkles" class="mr-1 inline h-3.5 w-3.5" />{{ $item['why'] }}</p>@endif
+        @if ($item['modes'])
+            <div class="relative z-10 mt-3 flex flex-wrap gap-1.5">
+                @if (in_array('call', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="Call about {{ $item['title'] }}"><x-icon name="phone" class="h-3.5 w-3.5" /> Call</a>@endif
+                @if (in_array('whatsapp', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="WhatsApp about {{ $item['title'] }}"><x-icon name="chat" class="h-3.5 w-3.5" /> WhatsApp</a>@endif
+                @if (in_array('email', $item['modes'], true))<a href="{{ $href }}#contact" class="btn-light btn-sm" aria-label="Enquire about {{ $item['title'] }}"><x-icon name="mail" class="h-3.5 w-3.5" /> Enquire</a>@endif
+            </div>
+        @endif
         <div class="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-muted">
             <span>@if ($item['approved'])<span class="font-semibold text-teal-800"><x-icon name="shield" class="inline h-3.5 w-3.5" /> {{ $item['badge'] }}</span>@else{{ $item['promoter'] }}@endif</span>
             <label class="relative z-10 inline-flex items-center gap-1"><input type="checkbox" class="checkbox" value="{{ $item['key'] }}" data-compare> Compare</label>

@@ -43,4 +43,22 @@ class ChatLogController extends Controller
     {
         return view('app.chats.show', ['c' => $conversation->load(['messages', 'customer', 'user', 'tenant'])]);
     }
+
+    /** AI search log (spec 17.8): what buyers searched for, the filters used, what was relaxed and how many results. */
+    public function searches(Request $request)
+    {
+        $q = \App\Models\AiSearchLog::query()->with('customer:id,name')
+            ->when($request->query('q'), fn ($q, $s) => $q->where('query', 'like', "%$s%"))
+            ->when($request->query('zero'), fn ($q) => $q->where('result_count', 0))
+            ->when($request->date('from'), fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
+            ->when($request->date('to'), fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
+            ->latest('id');
+        if ($request->query('export') === 'xlsx') {
+            return Excel::download('ai-search-log.xlsx', ['Time', 'Search', 'Filters', 'Relaxed', 'Results', 'AI used', 'Cached', 'Customer'],
+                $q->limit(20000)->cursor()->map(fn ($l) => [$l->created_at, $l->query, json_encode($l->filters, JSON_UNESCAPED_UNICODE), implode('; ', (array) $l->relaxed), $l->result_count,
+                    $l->used_ai ? 'Yes' : 'No', $l->cached ? 'Yes' : 'No', $l->customer?->name]), 'AI search log');
+        }
+
+        return view('app.chats.searches', ['logs' => $q->paginate(50)->withQueryString()]);
+    }
 }

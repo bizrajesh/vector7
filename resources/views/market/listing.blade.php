@@ -105,6 +105,10 @@
                     <a href="{{ route('login') }}" class="btn-light w-full"><x-icon name="star" class="h-4 w-4" /> Sign in to shortlist</a>
                 @endauth
                 <a href="{{ route('market.compare', ['keys' => 'L:'.$listing->id]) }}" class="btn-ghost w-full">Compare with others</a>
+                <div class="grid grid-cols-2 gap-2">
+                    <a href="https://wa.me/?text={{ rawurlencode($listing->title.' – '.$listing->publicUrl()) }}" class="btn-light btn-sm" target="_blank" rel="noopener"><x-icon name="chat" class="h-4 w-4" /> Share</a>
+                    <button type="button" class="btn-light btn-sm" data-copy-link="{{ $listing->publicUrl() }}"><x-icon name="link" class="h-4 w-4" /> Copy link</button>
+                </div>
                 @if ($listing->brochure)<a href="{{ route('market.brochure', ['listing', $listing->id]) }}" class="btn-ghost w-full"><x-icon name="download" class="h-4 w-4" /> Download brochure (PDF)</a>@endif
                 <p class="text-muted">Listed by <strong>{{ $tenant->name }}</strong>@if ($tenant->city), {{ $tenant->city }}@endif</p>
                 <p class="text-muted">{{ number_format($listing->views) }} views</p>

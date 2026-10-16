@@ -47,6 +47,12 @@
 
   /* ---------- Dropdowns (<details>) close on outside click ---------- */
   function initDropdowns() {
+    $$('[data-copy-link]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = 'Copied'; setTimeout(function () { b.innerHTML = t; }, 1500); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done, function () { alertBox(url); }); } else { alertBox(url); }
+      });
+    });
     document.addEventListener('click', function (e) {
       $$('details[data-dropdown][open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
     });
@@ -702,6 +708,12 @@
       });
       sync();
     }
+    $$('[data-copy-link]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var url = b.getAttribute('data-copy-link'), done = function () { var t = b.innerHTML; b.textContent = 'Copied'; setTimeout(function () { b.innerHTML = t; }, 1500); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done, function () { alertBox(url); }); } else { alertBox(url); }
+      });
+    });
     document.addEventListener('click', function (e) {
       $$('details[data-dropdown][open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
     });
@@ -747,8 +759,9 @@
       var table = function (t) {
         if (!t || !t.columns) return;
         var w = document.createElement('div'); w.className = 'overflow-x-auto rounded-xl bg-white ring-1 ring-navy-50';
-        w.innerHTML = '<table class="w-full text-xs"><thead><tr>' + t.columns.map(function (c) { return '<th class="px-2 py-1 text-left">' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-          t.rows.map(function (r) { return '<tr class="border-t border-navy-50">' + r.map(function (v) { return '<td class="px-2 py-1">' + esc(v) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>' +
+        var links = t.links || [];
+        w.innerHTML = (t.title ? '<p class="px-2 pt-2 text-xs font-bold">' + esc(t.title) + '</p>' : '') + '<table class="w-full text-xs"><thead><tr>' + t.columns.map(function (c) { return '<th class="px-2 py-1 text-left">' + esc(c) + '</th>'; }).join('') + (links.length ? '<th></th>' : '') + '</tr></thead><tbody>' +
+          t.rows.map(function (r, i) { return '<tr class="border-t border-navy-50">' + r.map(function (v) { return '<td class="px-2 py-1">' + esc(v) + '</td>'; }).join('') + (links.length ? '<td class="px-2 py-1">' + (links[i] ? '<a href="' + esc(links[i]) + '">Open</a>' : '') + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table>' +
           (t.export ? '<a class="block px-2 py-1 text-xs font-semibold" href="' + esc(t.export) + '">Download Excel</a>' : '');
         log.appendChild(w); scroll();
       };
@@ -757,8 +770,8 @@
         var box = document.createElement('div'); box.className = 'rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200';
         if (a.type === 'create_lead') {
           box.innerHTML = '<p class="font-semibold">Share your details with the owner of ' + esc(a.title) + '?</p>' +
-            '<label class="mt-2 block text-xs">Your name<input name="name" class="input mt-1" maxlength="100" required></label>' +
-            '<label class="mt-2 block text-xs">Mobile<input name="mobile" class="input mt-1" inputmode="numeric" maxlength="10" required></label>' +
+            '<label class="mt-2 block text-xs">Your name<input name="name" class="input mt-1" maxlength="100" required value="' + esc(a.name || '') + '"></label>' +
+            '<label class="mt-2 block text-xs">Mobile<input name="mobile" class="input mt-1" inputmode="numeric" maxlength="10" required value="' + esc(a.mobile || '') + '"></label>' +
             '<label class="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" name="consent" class="checkbox mt-0.5"> I agree to share my name and mobile with the owner so they can contact me.</label>' +
             '<p class="error hidden" data-err></p><button type="button" class="btn-primary btn-sm mt-2">Share and ask to call me</button>';
           $('button', box).addEventListener('click', function () {
@@ -777,6 +790,8 @@
             if (!lastField || !document.body.contains(lastField)) { alertBox('Click the text box on the page you want to fill, then press Apply again.'); return; }
             lastField.value = $('textarea', box).value; lastField.dispatchEvent(new Event('input', { bubbles: true })); lastField.focus();
           });
+        } else if (a.type === 'link') {
+          box.innerHTML = '<a class="btn-primary btn-sm" href="' + esc(a.url) + '">' + esc(a.label) + '</a>';
         } else if (a.type === 'confirm') {
           box.innerHTML = '<p class="text-sm">' + esc(a.summary) + '</p><div class="mt-2 flex gap-2"><button type="button" class="btn-primary btn-sm" data-yes>Confirm</button><button type="button" class="btn-ghost btn-sm" data-no>Cancel</button></div><p class="error hidden" data-err></p>';
           $('[data-yes]', box).addEventListener('click', function () {
@@ -797,11 +812,15 @@
           (j.messages || []).forEach(render);
         }).catch(function () { bubble('assistant', 'The assistant is not available right now.'); });
       };
-      var open = function () { panel.classList.remove('hidden'); panel.classList.add('flex'); load(); input.focus(); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); }); };
-      var close = function () { panel.classList.add('hidden'); panel.classList.remove('flex'); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); }); };
+      var key = 'v7chat-open-' + root.getAttribute('data-bot');
+      var remember = function (on) { try { on ? sessionStorage.setItem(key, '1') : sessionStorage.removeItem(key); } catch (e) { /* storage blocked */ } };
+      var open = function () { panel.classList.remove('hidden'); panel.classList.add('flex'); load(); input.focus(); remember(true); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); }); };
+      var close = function () { panel.classList.add('hidden'); panel.classList.remove('flex'); remember(false); $$('[data-chat-open]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); }); };
       $$('[data-chat-open]').forEach(function (b) { b.addEventListener('click', function () { panel.classList.contains('hidden') ? open() : close(); }); });
       $('[data-chat-close]', root).addEventListener('click', close);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.classList.contains('hidden')) close(); });
+      // The workspace panel stays open while moving between screens.
+      try { if (root.getAttribute('data-bot') === 'workspace' && sessionStorage.getItem(key) === '1') open(); } catch (e) { /* storage blocked */ }
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var text = input.value.trim(); if (!text || busy) return;

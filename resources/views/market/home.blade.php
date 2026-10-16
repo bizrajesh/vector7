@@ -18,6 +18,20 @@
                         @endforeach
                     </p>
                 </form>
+                <details class="mt-3 rounded-2xl bg-page ring-1 ring-navy-50">
+                    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold"><x-icon name="filter" class="mr-1 inline h-4 w-4" /> Or use classic filters</summary>
+                    <form action="{{ route('market.search') }}" method="GET" class="grid gap-3 px-4 pb-4 sm:grid-cols-4" aria-label="Classic property filters">
+                        <div><label for="hc_type" class="mb-1 block text-xs font-semibold text-muted">Type</label>
+                            <select id="hc_type" name="type[]" class="input"><option value="">Any</option><option value="layout">Layouts & plots</option>@foreach (\App\Listings\ListingTypes::all() as $k => $t)<option value="{{ $k }}">{{ $t->plural() }}</option>@endforeach</select></div>
+                        <div><label for="hc_place" class="mb-1 block text-xs font-semibold text-muted">City / district</label>
+                            <input id="hc_place" name="place" class="input" list="hc_places" placeholder="Anywhere"><datalist id="hc_places">@foreach ($places as $p)<option value="{{ $p }}">@endforeach</datalist></div>
+                        <div><label for="hc_budget" class="mb-1 block text-xs font-semibold text-muted">Budget up to</label>
+                            <select id="hc_budget" name="budget_max" class="input"><option value="">Any</option>@foreach ([1000000 => '₹10 lakh', 2500000 => '₹25 lakh', 5000000 => '₹50 lakh', 10000000 => '₹1 crore', 20000000 => '₹2 crore'] as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select></div>
+                        <div><label for="hc_area" class="mb-1 block text-xs font-semibold text-muted">Min area (sq ft)</label>
+                            <input id="hc_area" name="area_min" type="number" min="0" step="100" class="input"></div>
+                        <button class="btn-primary sm:col-span-4">Search</button>
+                    </form>
+                </details>
                 <dl class="mt-8 flex flex-wrap gap-x-10 gap-y-3 text-sm">
                     <div><dt class="text-muted">Properties listed</dt><dd class="text-2xl font-extrabold">{{ number_format($stats['listings']) }}</dd></div>
                     <div><dt class="text-muted">Launched layouts</dt><dd class="text-2xl font-extrabold">{{ $stats['projects'] }}</dd></div>
@@ -97,17 +111,20 @@
         </ul>
     </section>
 
-    @if ($listings->isNotEmpty())
-        <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="new-h">
-            <div class="flex flex-wrap items-end justify-between gap-4">
-                <h2 id="new-h" class="text-3xl font-extrabold tracking-tight">Featured & newly listed</h2>
-                <a href="{{ route('market.category', ['purpose' => 'buy']) }}" class="font-semibold">See all</a>
-            </div>
-            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ($listings as $item)@include('partials.property-card', ['item' => $item, 'shortlisted' => []])@endforeach
-            </div>
-        </section>
-    @endif
+    @foreach ([['feat-h', 'Featured', $listings, route('market.category', ['purpose' => 'buy'])], ['lay-h', 'New layouts launched', $newLayouts, \App\Services\PropertySearch::categoryUrl('layout')],
+        ['off-h', 'Best offers ending soon', $offers, route('market.search', ['offer' => 1])], ['rec-h', 'Recently added', $recent, route('market.search', ['sort' => 'newest'])]] as [$hid, $heading, $set, $more])
+        @if ($set->isNotEmpty())
+            <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="{{ $hid }}">
+                <div class="flex flex-wrap items-end justify-between gap-4">
+                    <h2 id="{{ $hid }}" class="text-3xl font-extrabold tracking-tight">{{ $heading }}</h2>
+                    <a href="{{ $more }}" class="font-semibold">See all</a>
+                </div>
+                <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach ($set as $item)@include('partials.property-card', ['item' => $item, 'shortlisted' => []])@endforeach
+                </div>
+            </section>
+        @endif
+    @endforeach
 
     @if ($districts->isNotEmpty())
         <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6" aria-labelledby="dist-h">
@@ -147,7 +164,7 @@
                 <p class="mt-4 text-lg text-muted">Promoters on vector7 track every approval stage — land records, layout approval, gift deed, RERA — before a layout can be launched. What you see is what has been approved.</p>
             </div>
             <ul class="grid gap-4 sm:grid-cols-2">
-                @foreach ([['shield', 'Approvals tracked', 'Layouts go live only after their approval stages are complete.'], ['map', 'Live plot status', 'Booked and sold plots are marked the moment it happens.'], ['receipt', 'Receipts for every rupee', 'Numbered PDF receipts in your account, always.'], ['doc', 'Documents in one place', 'Registration pack, acknowledgement and receipts to download any time.']] as [$icon, $h, $t])
+                @foreach ([['shield', 'Approvals tracked', 'Layouts go live only after their approval stages are complete.'], ['map', 'Live plot status', 'Booked and sold plots are marked the moment it happens.'], ['receipt', 'Receipts for every rupee', 'Numbered PDF receipts in your account, always.'], ['doc', 'Documents in one place', 'Registration pack, acknowledgement and receipts to download any time.'], ['check', 'Approval & RERA badges', 'Approval and RERA numbers are shown on the listing when the promoter has them.'], ['alert', 'Report anything wrong', 'Every listing has a Report button. The vector7 team reviews reports and hides fake listings.']] as [$icon, $h, $t])
                     <li class="rounded-2xl bg-page p-5"><span class="text-teal-700"><x-icon :name="$icon" class="h-6 w-6" /></span><p class="mt-3 font-bold">{{ $h }}</p><p class="mt-1 text-sm text-muted">{{ $t }}</p></li>
                 @endforeach
             </ul>
@@ -191,6 +208,7 @@
         <div class="flex flex-col items-start justify-between gap-6 rounded-3xl bg-navy p-8 text-white sm:p-12 lg:flex-row lg:items-center">
             <div class="max-w-2xl">
                 <h2 class="text-3xl font-extrabold tracking-tight text-white">Promoter or owner? List on vector7</h2>
+                <ol class="mt-4 grid gap-2 text-sm text-navy-100 sm:grid-cols-3"><li><strong class="text-white">1.</strong> Create a free workspace</li><li><strong class="text-white">2.</strong> Quick-launch a layout or post a property with photos</li><li><strong class="text-white">3.</strong> Calls, WhatsApp and enquiries arrive in Leads</li></ol>
                 <p class="mt-3 text-navy-100">Post plots, flats, villas, houses, farm land or shops with photos and a map pin. Every call, WhatsApp and enquiry lands in your Leads. Start on a free trial.</p>
             </div>
             <div class="flex flex-wrap gap-3">

@@ -8,6 +8,8 @@ class AiSearchLog extends Model
 {
     public $timestamps = false;
 
+    public function customer(): \Illuminate\Database\Eloquent\Relations\BelongsTo { return $this->belongsTo(Customer::class); }
+
     protected $guarded = ['id'];
 
     protected function casts(): array

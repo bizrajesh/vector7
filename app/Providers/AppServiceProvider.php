@@ -57,8 +57,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('enquiry', fn (Request $r) => Limit::perHour(20)->by($r->ip()));
         RateLimiter::for('ai', fn (Request $r) => Limit::perMinute(10)->by($r->user()?->id ?: $r->ip()));
         // Masked-number reveal / call / WhatsApp clicks (spec 17.5): per visitor and per number.
-        RateLimiter::for('reveal', fn (Request $r) => [Limit::perMinute(5)->by('rv:'.$r->ip()), Limit::perDay(30)->by('rvd:'.$r->ip())]);
-        RateLimiter::for('search', fn (Request $r) => Limit::perMinute(40)->by($r->ip()));
+        RateLimiter::for('reveal', fn (Request $r) => array_filter([Limit::perMinute(5)->by('rv:'.$r->ip()), Limit::perDay(30)->by('rvd:'.$r->ip()),
+            ($cid = auth('customer')->id()) ? Limit::perDay(40)->by('rvc:'.$cid) : null]));
+        RateLimiter::for('search', fn (Request $r) => array_filter([Limit::perMinute(40)->by($r->ip()), ($cid = auth('customer')->id()) ? Limit::perMinute(40)->by('sc:'.$cid) : null]));
         RateLimiter::for('report', fn (Request $r) => Limit::perHour(10)->by($r->ip()));
         RateLimiter::for('chat', fn (Request $r) => [Limit::perMinute(12)->by('ch:'.($r->user()?->id ?: $r->ip())), Limit::perDay(200)->by('chd:'.($r->user()?->id ?: $r->ip()))]);
     }

@@ -20,8 +20,12 @@ class HomeController extends Controller
         $featured = Project::launched()->with(['plots', 'layoutFile', 'tenantRel', 'images'])
             ->orderByDesc('is_featured')->orderByDesc('launched_at')->take(6)->get()
             ->filter(fn ($p) => $p->plots->where('status', 'available')->isNotEmpty())->values();
-        $listings = Listing::live()->with(['cover', 'contact', 'featureRows.master', 'tenantRel:id,name'])->withCount('images')
-            ->orderByDesc('featured')->latest('published_at')->take(8)->get()->map(fn ($l) => PropertySearch::listingItem($l));
+        $with = ['cover', 'contact', 'featureRows.master', 'tenantRel:id,name'];
+        $listings = Listing::live()->where('featured', true)->with($with)->withCount('images')->latest('published_at')->take(8)->get()->map(fn ($l) => PropertySearch::listingItem($l));
+        $recent = Listing::live()->with($with)->withCount('images')->latest('published_at')->take(8)->get()->map(fn ($l) => PropertySearch::listingItem($l));
+        $all = PropertySearch::search(PropertySearch::clean(['offer' => true]), 'relevance', false, 100)['items'];
+        $offers = $all->filter(fn ($i) => $i['offer_ends'])->sortBy(fn ($i) => $i['offer_ends']->timestamp)->take(4)->values();
+        $newLayouts = PropertySearch::search(PropertySearch::clean(['types' => ['layout']]), 'newest', false, 4)['items'];
         $counts = PropertySearch::categoryCounts();
         $categories = collect(['layout' => ['Approved layouts', 'layers']])
             ->merge(collect(ListingTypes::all())->map(fn ($t) => [$t->plural(), $t->icon()]))
@@ -36,6 +40,10 @@ class HomeController extends Controller
         return view('market.home', [
             'featured' => $featured,
             'listings' => $listings,
+            'recent' => $recent,
+            'offers' => $offers,
+            'newLayouts' => $newLayouts,
+            'places' => PropertySearch::knownPlaces()->sort()->values(),
             'categories' => $categories,
             'districts' => PropertySearch::districtCounts(12),
             'stats' => $stats,

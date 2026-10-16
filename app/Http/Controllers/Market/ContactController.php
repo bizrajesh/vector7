@@ -32,6 +32,11 @@ class ContactController extends Controller
         abort_if(in_array($mode, ['call', 'show'], true) && ! in_array('call', $modes, true), 422, 'Calls are not enabled for this property.');
 
         $person = $request->session()->get('contact_person');
+        $customer = auth('customer')->user();
+        // Signed-in buyers with a mobile number skip the form: the number shows straight away (still logged as a lead).
+        if (! $person && $customer?->mobile && ! $request->filled('mobile')) {
+            $person = ['name' => $customer->name, 'mobile' => $customer->mobile];
+        }
         if (! $person || $request->filled('mobile')) {
             $data = $request->validate([
                 'name' => 'required|string|max:100',
@@ -42,7 +47,6 @@ class ContactController extends Controller
             $person = ['name' => $data['name'], 'mobile' => $data['mobile']];
             $request->session()->put('contact_person', $person);
         }
-        $customer = auth('customer')->user();
         $source = $request->input('src') === 'ai' ? 'ai_search' : self::MODES[$mode];
         $body = ['call' => 'Tapped Call', 'whatsapp' => 'Tapped WhatsApp', 'show' => 'Viewed the phone number'][$mode].' on '.$title.' ('.$code.').';
         LeadService::capture($owner->tenant_id, $source, $person + ['customer_id' => $customer?->id, 'email' => $customer?->email, 'consent' => true],

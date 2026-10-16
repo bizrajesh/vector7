@@ -1,5 +1,6 @@
 <x-layouts.workspace title="Chatbot conversations">
     <x-page-header title="Chatbot conversations" subtitle="Marketplace and workspace assistant conversations, kept for 90 days.">
+        <a href="{{ route('app.chats.searches') }}" class="btn-light"><x-icon name="search" class="h-4 w-4" /> AI search log</a>
         <x-export-buttons />
     </x-page-header>
     <x-filters>

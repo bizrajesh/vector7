@@ -36,22 +36,43 @@ class WorkspaceBot
     /** Tool => permission it needs (and the plan module, when it is plan-gated). */
     public const TOOL_PERMS = [
         'search_help' => null,
+        'show_draft' => null,
+        // Tenant workspace tools
         'list_leads' => 'leads.view',
         'lead_details' => 'leads.view',
-        'plot_availability' => 'launch.view',
+        'count_plots' => 'launch.view',
+        'list_bookings' => 'bookings.view',
+        'project_summary' => 'reports.view', // money totals: Admin, Manager, Accounts (not Sales — spec 17.13)
         'list_listings' => 'listings.view',
-        'instalments_due' => 'sales.view',
-        'expenses_total' => 'accounts.view',
-        'show_draft' => null,
+        'list_due_instalments' => 'sales.view',
+        'expense_summary' => 'reports.view',
+        'usage_summary' => 'tenant_settings.view',
         'propose_followup' => 'leads.update',
+        // App workspace tools
+        'app_tenants' => 'subscriptions.view',
+        'app_subscriptions' => 'subscriptions.view',
+        'app_usage' => 'subscriptions.view',
+        'app_tickets' => 'helpdesk.view',
     ];
+
+    public const APP_TOOLS = ['app_tenants', 'app_subscriptions', 'app_usage', 'app_tickets'];
 
     public static function enabledFor(User $user): bool
     {
+        if (AppSettings::get('ai.workspace_chat_enabled', '1') !== '1') {
+            return false;
+        }
+        if ($user->isAppUser()) {
+            return true; // App users: help pages + App-level tools, charged to the App budget
+        }
         $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
 
-        return $tenant && $user->hasPerm('workspace_bot.view') && AppSettings::get('ai.workspace_chat_enabled', '1') === '1'
-            && (bool) ($tenant->setting()->workspace_bot_enabled ?? true);
+        return $tenant && $user->hasPerm('workspace_bot.view') && (bool) ($tenant->setting()->workspace_bot_enabled ?? true);
+    }
+
+    public static function routePrefix(User $user): string
+    {
+        return $user->isAppUser() ? 'app.' : 'ws.';
     }
 
     public static function allowed(User $user, string $tool): bool
@@ -63,8 +84,12 @@ class WorkspaceBot
         if ($perm === null) {
             return true;
         }
+        // App tools only for App users; tenant tools only for workspace users.
+        if (in_array($tool, self::APP_TOOLS, true) !== $user->isAppUser()) {
+            return false;
+        }
         $module = strtok($perm, '.');
-        $tenant = Tenant::find($user->tenant_id);
+        $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
         if ($module === 'leads' && $tenant && ! PlanLimiter::moduleEnabled($tenant, 'leads')) {
             return false;
         }
@@ -87,23 +112,28 @@ class WorkspaceBot
         if (! $c->title) {
             $c->update(['title' => Str::limit($message, 140)]);
         }
-        $tenant = Tenant::findOrFail($user->tenant_id);
+        $tenant = $user->tenant_id ? Tenant::findOrFail($user->tenant_id) : null;
         $out = null;
         $notice = null;
+        $upgrade = false;
         if (ClaudeClient::groupAvailable('workspace_chat')) {
             try {
                 $out = self::withClaude($c, $user, $tenant);
             } catch (PlanLimitException $e) {
                 $notice = $e->getMessage().' Help-page answers still work.';
+                $upgrade = true;
             } catch (\Throwable $e) {
                 $notice = null;
             }
         }
         $out ??= self::fallback($user, $message, $notice);
+        if ($upgrade && ! $out['action'] && $user->hasPerm('tenant_settings.view')) {
+            $out['action'] = ['type' => 'link', 'label' => 'Upgrade plan', 'url' => route('ws.settings.plan')];
+        }
         $meta = array_filter(['table' => $out['table'], 'action' => $out['action'], 'used_ai' => $out['used_ai']]);
         $msg = self::store($c, 'assistant', $out['text'], $meta);
         if ($out['table']) {
-            $out['table']['export'] = route('ws.assistant.export', $msg);
+            $out['table']['export'] = route(self::routePrefix($user).'assistant.export', $msg);
         }
 
         return $out;
@@ -117,11 +147,12 @@ class WorkspaceBot
         return $m;
     }
 
-    private static function system(User $user, Tenant $tenant): string
+    private static function system(User $user, ?Tenant $tenant): string
     {
         $tools = collect(self::TOOL_PERMS)->keys()->filter(fn ($t) => self::allowed($user, $t))->implode(', ');
+        $who = $tenant ? "the vector7 workspace assistant for {$tenant->name}, a real-estate layout promoter in Tamil Nadu" : 'the assistant for the vector7 App team (platform owner), who manage all promoter workspaces';
 
-        return "You are the vector7 workspace assistant for {$tenant->name}, a real-estate layout promoter in Tamil Nadu. The user is {$user->name} (role: {$user->role?->name}). Today is ".today()->format('d-m-Y').".\n"
+        return "You are $who. The user is {$user->name} (role: {$user->role?->name}). Today is ".today()->format('d-m-Y').".\n"
             ."- For how-to questions call search_help and answer from the articles, with the article link.\n"
             ."- For data questions use the data tools; never guess numbers. Tools this user may use: $tools. If a tool is not allowed, say their role cannot see that data.\n"
             ."- You cannot change data. To write text (listing description, promotion text, WhatsApp/email message, social post) call show_draft so the user can copy or apply it. To schedule a follow-up call propose_followup; the user confirms it.\n"
@@ -138,10 +169,18 @@ class WorkspaceBot
                 'due' => ['type' => 'string', 'enum' => ['today', 'overdue', 'week']], 'source' => ['type' => 'string'], 'mine' => ['type' => 'boolean'],
                 'created_since_days' => ['type' => 'integer']], 'required' => []],
             'lead_details' => ['description' => 'One lead with interests, recent activity and follow-ups.', 'properties' => ['lead_code' => ['type' => 'string']], 'required' => ['lead_code']],
-            'plot_availability' => ['description' => 'Plot counts by status (and available plots) for launched projects.', 'properties' => ['project' => ['type' => 'string', 'description' => 'project name or code; empty = all']], 'required' => []],
+            'count_plots' => ['description' => 'Plot counts by status (and available plots) for launched projects.', 'properties' => ['project' => ['type' => 'string', 'description' => 'project name or code; empty = all']], 'required' => []],
             'list_listings' => ['description' => 'Property listings with status, price, views and lead counts.', 'properties' => ['status' => ['type' => 'string'], 'type' => ['type' => 'string']], 'required' => []],
-            'instalments_due' => ['description' => 'Instalments due or overdue.', 'properties' => ['period' => ['type' => 'string', 'enum' => ['overdue', 'this_week', 'this_month', 'next_30_days']]], 'required' => ['period']],
-            'expenses_total' => ['description' => 'Total expenses, optionally for a project, by category.', 'properties' => ['project' => ['type' => 'string'], 'from' => ['type' => 'string', 'description' => 'YYYY-MM-DD'], 'to' => ['type' => 'string']], 'required' => []],
+            'list_bookings' => ['description' => 'Bookings (active by default) with customer, plot, price and validity.', 'properties' => ['status' => ['type' => 'string', 'enum' => ['active', 'expired', 'converted', 'cancelled', 'all']],
+                'expiring_within_days' => ['type' => 'integer']], 'required' => []],
+            'project_summary' => ['description' => 'Summary of a project: status, plots, sales value, collections, dues, budget vs spent.', 'properties' => ['project' => ['type' => 'string']], 'required' => ['project']],
+            'usage_summary' => ['description' => 'This workspace\'s plan usage (projects, listings, users, storage, AI credits).', 'properties' => (object) [], 'required' => []],
+            'app_tenants' => ['description' => 'Promoter workspaces with plan, status and city.', 'properties' => ['status' => ['type' => 'string'], 'search' => ['type' => 'string']], 'required' => []],
+            'app_subscriptions' => ['description' => 'Subscriptions ending soon or past due.', 'properties' => ['expiring_within_days' => ['type' => 'integer']], 'required' => []],
+            'app_usage' => ['description' => 'Usage per workspace this month (AI credits, listings, projects, storage).', 'properties' => (object) [], 'required' => []],
+            'app_tickets' => ['description' => 'Help desk tickets.', 'properties' => ['status' => ['type' => 'string', 'enum' => ['open', 'in_progress', 'resolved', 'closed', 'all']]], 'required' => []],
+            'list_due_instalments' => ['description' => 'Instalments due or overdue.', 'properties' => ['period' => ['type' => 'string', 'enum' => ['overdue', 'this_week', 'this_month', 'next_30_days']]], 'required' => ['period']],
+            'expense_summary' => ['description' => 'Total expenses, optionally for a project, by category.', 'properties' => ['project' => ['type' => 'string'], 'from' => ['type' => 'string', 'description' => 'YYYY-MM-DD'], 'to' => ['type' => 'string']], 'required' => []],
             'show_draft' => ['description' => 'Show drafted text to the user with Copy / Apply buttons.', 'properties' => ['label' => ['type' => 'string'], 'text' => ['type' => 'string']], 'required' => ['text']],
             'propose_followup' => ['description' => 'Propose a follow-up or site visit on a lead; the user must confirm.', 'properties' => [
                 'lead_code' => ['type' => 'string'], 'due_at' => ['type' => 'string', 'description' => 'YYYY-MM-DD HH:MM'], 'kind' => ['type' => 'string', 'enum' => ['follow_up', 'site_visit']],
@@ -157,7 +196,7 @@ class WorkspaceBot
         return $out;
     }
 
-    private static function withClaude(ChatConversation $c, User $user, Tenant $tenant): array
+    private static function withClaude(ChatConversation $c, User $user, ?Tenant $tenant): array
     {
         $history = ChatMessage::where('chat_conversation_id', $c->id)->latest('id')->take(self::CONTEXT)->get()->reverse()->values();
         $messages = [];
@@ -204,25 +243,34 @@ class WorkspaceBot
         if (! self::allowed($user, $name)) {
             return [['error' => 'Your role is not allowed to see this.'], null, null];
         }
-        $tenant = Tenant::findOrFail($user->tenant_id);
+        $tenant = $user->tenant_id ? Tenant::findOrFail($user->tenant_id) : null;
 
         return app(Tenancy::class)->run($tenant, fn () => match ($name) {
             'search_help' => self::help($user, (string) ($in['query'] ?? '')),
             'list_leads' => self::leads($user, $in),
             'lead_details' => self::leadDetails($user, (string) ($in['lead_code'] ?? '')),
-            'plot_availability' => self::plots((string) ($in['project'] ?? '')),
+            'count_plots' => self::plots((string) ($in['project'] ?? '')),
+            'list_bookings' => self::bookings($in),
+            'project_summary' => self::projectSummary((string) ($in['project'] ?? '')),
             'list_listings' => self::listings($in),
-            'instalments_due' => self::instalments((string) ($in['period'] ?? 'overdue')),
-            'expenses_total' => self::expenses($in),
+            'list_due_instalments' => self::instalments((string) ($in['period'] ?? 'overdue')),
+            'expense_summary' => self::expenses($in),
+            'usage_summary' => self::usage($tenant),
+            'app_tenants' => self::appTenants($in),
+            'app_subscriptions' => self::appSubscriptions((int) ($in['expiring_within_days'] ?? 30)),
+            'app_usage' => self::appUsage(),
+            'app_tickets' => self::appTickets((string) ($in['status'] ?? 'open')),
             'show_draft' => [['shown' => true], null, ['type' => 'draft', 'label' => mb_substr((string) ($in['label'] ?? 'Draft'), 0, 80), 'text' => mb_substr((string) ($in['text'] ?? ''), 0, 5000), 'apply' => true]],
             'propose_followup' => self::proposeFollowup($user, $in),
             default => [['error' => 'Unknown tool'], null, null],
         });
     }
 
-    private static function table(array $columns, array $rows, string $title): array
+    /** Table shown under the answer (first 200 rows), with optional "Open" links per row. */
+    private static function table(array $columns, array $rows, string $title, array $links = []): array
     {
-        return ['title' => $title, 'columns' => $columns, 'rows' => array_map(fn ($r) => array_map(fn ($v) => (string) $v, array_values($r)), array_slice($rows, 0, 200))];
+        return array_filter(['title' => $title, 'columns' => $columns, 'rows' => array_map(fn ($r) => array_map(fn ($v) => (string) $v, array_values($r)), array_slice($rows, 0, 200)),
+            'links' => $links ? array_slice(array_values($links), 0, 200) : null]);
     }
 
     private static function help(User $user, string $q): array
@@ -250,7 +298,7 @@ class WorkspaceBot
 
         return [['total' => $total, 'shown' => count($rows), 'leads' => $leads->map(fn ($l) => ['code' => $l->lead_code, 'name' => $l->name, 'stage' => $l->stage?->name, 'source' => $l->sourceLabel(),
             'next_follow_up' => $l->next_follow_up_at?->format('d-m-Y H:i'), 'link' => route('ws.leads.show', $l)])->all()],
-            self::table(['Lead', 'Name', 'Mobile', 'Stage', 'Source', 'Assigned to', 'Next follow-up'], $rows, 'Leads'), null];
+            self::table(['Lead', 'Name', 'Mobile', 'Stage', 'Source', 'Assigned to', 'Next follow-up'], $rows, 'Leads', $leads->map(fn ($l) => route('ws.leads.show', $l))->all()), null];
     }
 
     private static function leadDetails(User $user, string $code): array
@@ -275,11 +323,12 @@ class WorkspaceBot
                 'plots as sale_init' => fn ($q) => $q->whereIn('status', ['sale_init', 'ror', 'ror_init', 'ror_completed']), 'plots as sold' => fn ($q) => $q->where('status', 'sold'), 'plots as blocked' => fn ($q) => $q->where('status', 'blocked'), 'plots'])
             ->get();
         $rows = $projects->map(fn ($p) => [$p->name, $p->plots_count, $p->available, $p->booked, $p->sale_init, $p->sold, $p->blocked])->all();
+        $links = $projects->map(fn ($p) => route('ws.projects.show', $p))->all();
         $avail = $projects->count() === 1 ? Plot::where('project_id', $projects->first()->id)->where('status', 'available')->orderByRaw('CAST(plot_no AS UNSIGNED)')->take(60)->get()
             ->map(fn ($x) => ['plot' => $x->plot_no, 'sqft' => (float) $x->size_sqft, 'facing' => $x->facing, 'price' => round($x->currentPrice()), 'offer' => $x->offerIsActive()])->all() : [];
 
         return [['projects' => $projects->map(fn ($p) => ['name' => $p->name, 'total' => $p->plots_count, 'available' => $p->available, 'booked' => $p->booked, 'in_sale' => $p->sale_init, 'sold' => $p->sold, 'blocked' => $p->blocked])->all(),
-            'available_plots' => $avail], self::table(['Project', 'Total', 'Available', 'Booked', 'In sale', 'Sold', 'Blocked'], $rows, 'Plot availability'), null];
+            'available_plots' => $avail], self::table(['Project', 'Total', 'Available', 'Booked', 'In sale', 'Sold', 'Blocked'], $rows, 'Plot availability', $links), null];
     }
 
     private static function listings(array $in): array
@@ -290,7 +339,7 @@ class WorkspaceBot
         $rows = $ls->map(fn ($l) => [$l->listing_code, $l->title, $l->typeLabel(), $l->statusLabel(), Format::inr($l->currentPrice()).$l->priceSuffix(), $l->views, $leadCounts[$l->id] ?? 0])->all();
 
         return [['count' => $ls->count(), 'listings' => array_map(fn ($r) => array_combine(['code', 'title', 'type', 'status', 'price', 'views', 'leads'], $r), $rows)],
-            self::table(['Code', 'Title', 'Type', 'Status', 'Price', 'Views', 'Leads'], $rows, 'Listings'), null];
+            self::table(['Code', 'Title', 'Type', 'Status', 'Price', 'Views', 'Leads'], $rows, 'Listings', $ls->map(fn ($l) => route('ws.listings.show', $l))->all()), null];
     }
 
     private static function instalments(string $period): array
@@ -323,6 +372,95 @@ class WorkspaceBot
         return [['project' => $project?->name ?? 'All projects', 'from' => $from->format('d-m-Y'), 'to' => $to->format('d-m-Y'), 'total' => $total, 'by_category' => $rows->all()],
             self::table(['Category', 'Entries', 'Amount (₹)'], $rows->map(fn ($r) => [$r[0], $r[1], Format::indian($r[2])])->push(['Total', $rows->sum(1), Format::indian($total)])->all(),
                 'Expenses '.$from->format('d-m-Y').' to '.$to->format('d-m-Y').($project ? ' — '.$project->name : '')), null];
+    }
+
+    private static function bookings(array $in): array
+    {
+        $status = $in['status'] ?? 'active';
+        $q = \App\Models\Booking::with(['customer:id,name,mobile', 'plot:id,plot_no', 'project:id,name'])
+            ->when($status !== 'all', fn ($q) => $q->where('status', $status))
+            ->when($in['expiring_within_days'] ?? null, fn ($q, $d) => $q->where('status', 'active')->whereBetween('valid_till', [today(), today()->addDays((int) $d)]));
+        $items = $q->orderBy('valid_till')->take(200)->get();
+        $rows = $items->map(fn ($b) => [$b->booking_no, $b->customer?->name, $b->customer?->mobile, $b->project?->name, $b->plot?->plot_no, Format::inr($b->net_price),
+            Format::date($b->valid_till), \App\Models\Booking::STATUSES[$b->status] ?? $b->status])->all();
+
+        return [['count' => $items->count(), 'bookings' => array_slice(array_map(fn ($r) => array_combine(['booking', 'customer', 'mobile', 'project', 'plot', 'price', 'valid_till', 'status'], $r), $rows), 0, 40)],
+            self::table(['Booking', 'Customer', 'Mobile', 'Project', 'Plot', 'Price', 'Valid till', 'Status'], $rows, 'Bookings', $items->map(fn ($b) => route('ws.bookings.show', $b))->all()), null];
+    }
+
+    private static function projectSummary(string $name): array
+    {
+        $p = Project::where('name', 'like', '%'.$name.'%')->orWhere('project_code', $name)->with('estimate')->first();
+        if (! $p) {
+            return [['error' => 'No project with that name.'], null, null];
+        }
+        $plots = Plot::where('project_id', $p->id)->selectRaw('status, count(*) n')->groupBy('status')->pluck('n', 'status');
+        $sales = \App\Models\Sale::where('project_id', $p->id)->where('status', '!=', 'cancelled');
+        $data = ['project' => $p->name, 'code' => $p->project_code, 'status' => $p->statusLabel(), 'launch' => $p->launch_mode === 'direct' ? 'Direct launch' : 'Full project',
+            'progress_pct' => (float) $p->progress_pct, 'plots' => $plots->all(), 'sales_value' => round((clone $sales)->sum('net_price')), 'collected' => round((clone $sales)->sum('paid_amount')),
+            'due' => round((clone $sales)->sum('due_amount')), 'budget' => round((float) ($p->estimate?->total_cost ?? 0)), 'spent' => round(Expense::where('project_id', $p->id)->sum('amount')),
+            'link' => route('ws.projects.show', $p)];
+        $rows = [['Status', $data['status'].' · '.$data['launch']], ['Plots', collect($data['plots'])->map(fn ($n, $st) => (Plot::STATUSES[$st] ?? $st).' '.$n)->implode(', ')],
+            ['Sales value', Format::inr($data['sales_value'])], ['Collected', Format::inr($data['collected'])], ['Balance due', Format::inr($data['due'])],
+            ['Budget (estimate)', $data['budget'] ? Format::inr($data['budget']) : '—'], ['Spent', Format::inr($data['spent'])]];
+
+        return [$data, self::table(['Item', 'Value'], $rows, 'Project summary — '.$p->name), null];
+    }
+
+    private static function usage(?Tenant $tenant): array
+    {
+        if (! $tenant) {
+            return [['error' => 'Not a workspace user.'], null, null];
+        }
+        $u = PlanLimiter::usage($tenant);
+        $rows = collect($u)->map(fn ($x) => [$x['label'], $x['display']['used'], $x['display']['limit'], $x['display']['left']])->values()->all();
+
+        return [['plan' => $tenant->plan()?->name, 'usage' => collect($u)->map(fn ($x) => ['used' => $x['display']['used'], 'limit' => $x['display']['limit']])->all()],
+            self::table(['Limit', 'Used', 'Plan limit', 'Left'], $rows, 'Plan usage — '.($tenant->plan()?->name ?? 'no plan')), null];
+    }
+
+    private static function appTenants(array $in): array
+    {
+        $ts = Tenant::with('subscription.plan')->when($in['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
+            ->when($in['search'] ?? null, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('city', 'like', "%$s%")))->orderBy('name')->take(200)->get();
+        $rows = $ts->map(fn ($t) => [$t->name, $t->city, $t->status, $t->subscription?->plan?->name, $t->subscription?->status, $t->subscription?->ends_on ? Format::date($t->subscription->ends_on) : '—'])->all();
+
+        return [['count' => $ts->count(), 'tenants' => array_slice(array_map(fn ($r) => array_combine(['name', 'city', 'status', 'plan', 'subscription', 'ends_on'], $r), $rows), 0, 50)],
+            self::table(['Workspace', 'City', 'Status', 'Plan', 'Subscription', 'Ends on'], $rows, 'Workspaces', $ts->map(fn ($t) => route('app.subscriptions.show', $t))->all()), null];
+    }
+
+    private static function appSubscriptions(int $days): array
+    {
+        $subs = \App\Models\Subscription::with(['plan', 'tenant:id,name'])->where(fn ($q) => $q->where('status', 'past_due')
+            ->orWhere(fn ($w) => $w->whereIn('status', ['trial', 'active'])->whereBetween('ends_on', [today(), today()->addDays(max(1, $days))])))->orderBy('ends_on')->take(200)->get();
+        $rows = $subs->map(fn ($x) => [$x->tenant?->name, $x->plan?->name, $x->status, Format::date($x->ends_on), $x->daysLeft()])->all();
+
+        return [['count' => $subs->count(), 'subscriptions' => array_map(fn ($r) => array_combine(['workspace', 'plan', 'status', 'ends_on', 'days_left'], $r), array_slice($rows, 0, 50))],
+            self::table(['Workspace', 'Plan', 'Status', 'Ends on', 'Days left'], $rows, 'Subscriptions ending within '.$days.' days or past due', $subs->map(fn ($x) => route('app.subscriptions.show', $x->tenant_id))->all()), null];
+    }
+
+    private static function appUsage(): array
+    {
+        $ts = Tenant::where('status', 'active')->orderBy('name')->take(200)->get();
+        $rows = $ts->map(function ($t) {
+            $u = PlanLimiter::usage($t);
+
+            return [$t->name, ($u['ai_credits']['display']['used'] ?? '0').' / '.($u['ai_credits']['display']['limit'] ?? '—'), ($u['listings']['display']['used'] ?? '0').' / '.($u['listings']['display']['limit'] ?? '—'),
+                ($u['projects']['display']['used'] ?? '0').' / '.($u['projects']['display']['limit'] ?? '—'), $u['storage_mb']['display']['used'] ?? '—'];
+        })->all();
+
+        return [['workspaces' => array_map(fn ($r) => array_combine(['workspace', 'ai_credits', 'listings', 'projects', 'storage'], $r), array_slice($rows, 0, 50))],
+            self::table(['Workspace', 'AI credits', 'Listings', 'Projects', 'Storage'], $rows, 'Usage this month', $ts->map(fn ($t) => route('app.subscriptions.show', $t))->all()), null];
+    }
+
+    private static function appTickets(string $status): array
+    {
+        $ts = \App\Models\Ticket::when($status !== 'all', fn ($q) => $q->where('status', $status))->orderByRaw("FIELD(priority, 'urgent', 'high', 'medium', 'low')")->latest('id')->take(200)->get();
+        $rows = $ts->map(fn ($t) => [$t->number, $t->subject, $t->requester_name, \App\Models\Ticket::PRIORITIES[$t->priority] ?? $t->priority, \App\Models\Ticket::STATUSES[$t->status] ?? $t->status,
+            $t->sla_due_at ? Format::datetime($t->sla_due_at) : '—'])->all();
+
+        return [['count' => $ts->count(), 'tickets' => array_map(fn ($r) => array_combine(['number', 'subject', 'from', 'priority', 'status', 'sla_due'], $r), array_slice($rows, 0, 40))],
+            self::table(['Ticket', 'Subject', 'From', 'Priority', 'Status', 'SLA due'], $rows, 'Help desk tickets', $ts->map(fn ($t) => route('app.tickets.show', $t))->all()), null];
     }
 
     private static function proposeFollowup(User $user, array $in): array
@@ -363,8 +501,12 @@ class WorkspaceBot
         $prefix = $notice ? $notice."\n\n" : '';
         $shortcuts = [
             ['/follow.?up|overdue lead|leads? (today|due)/', 'list_leads', ['due' => str_contains($t, 'overdue') ? 'overdue' : 'today']],
-            ['/available plots?|plots? available|availability/', 'plot_availability', ['project' => '']],
-            ['/overdue instal|instalments? (due|overdue)|dues/', 'instalments_due', ['period' => 'overdue']],
+            ['/available plots?|plots? available|availability/', 'count_plots', ['project' => '']],
+            ['/overdue instal|instalments? (due|overdue)|dues/', 'list_due_instalments', ['period' => 'overdue']],
+            ['/bookings? (expir|active)|active bookings?/', 'list_bookings', ['status' => 'active']],
+            ['/usage|credits left|plan limit/', 'usage_summary', []],
+            ['/tickets?/', 'app_tickets', ['status' => 'open']],
+            ['/expiring|renewals?|subscriptions?/', 'app_subscriptions', ['expiring_within_days' => 30]],
         ];
         foreach ($shortcuts as [$re, $tool, $in]) {
             if (preg_match($re, $t) && self::allowed($user, $tool)) {

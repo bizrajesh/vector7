@@ -23,7 +23,7 @@ class AssistantController extends Controller
         return response()->json([
             'greeting' => 'Hi '.strtok($request->user()->name, ' ').'! Ask how to do something in vector7, or about your leads, plots, dues and expenses. I can also draft messages and descriptions.',
             'messages' => $c ? ChatMessage::where('chat_conversation_id', $c->id)->latest('id')->take(30)->get()->reverse()->values()->map(fn ($m) => [
-                'role' => $m->role, 'text' => $m->content, 'table' => isset($m->meta['table']) ? $m->meta['table'] + ['export' => route('ws.assistant.export', $m)] : null,
+                'role' => $m->role, 'text' => $m->content, 'table' => isset($m->meta['table']) ? $m->meta['table'] + ['export' => route(WorkspaceBot::routePrefix($request->user()).'assistant.export', $m)] : null,
             ]) : [],
         ]);
     }

@@ -439,6 +439,10 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::post('/testimonials', [App\ListingModerationController::class, 'storeTestimonial'])->middleware('perm:app_listings.create')->name('testimonials.store');
     Route::post('/testimonials/{testimonial}', [App\ListingModerationController::class, 'testimonial'])->middleware('perm:app_listings.update')->name('testimonials.update');
     Route::get('/chats', [App\ChatLogController::class, 'index'])->middleware('perm:app_chats.view')->name('chats.index');
+    Route::get('/assistant', [Tenant\AssistantController::class, 'history'])->name('assistant');
+    Route::post('/assistant', [Tenant\AssistantController::class, 'send'])->middleware('throttle:chat')->name('assistant.send');
+    Route::get('/assistant/export/{message}', [Tenant\AssistantController::class, 'export'])->name('assistant.export');
+    Route::get('/chats/ai-searches', [App\ChatLogController::class, 'searches'])->middleware('perm:app_chats.view')->name('chats.searches');
     Route::get('/chats/{conversation}', [App\ChatLogController::class, 'show'])->middleware('perm:app_chats.view')->name('chats.show');
 
     Route::get('/marketing', [App\MarketingController::class, 'index'])->middleware('perm:marketing.view')->name('marketing.index');
