@@ -128,6 +128,17 @@ class PlanLimiter
         return $out;
     }
 
+    /** Limits that matter to a property lister (one user, no projects or plots). */
+    public const LISTER_KEYS = ['listings', 'images_per_listing', 'storage_mb', 'ai_credits'];
+
+    /** Usage rows worth alerting about for this tenant (listers: listing-related limits only). */
+    public static function relevantUsage(Tenant $tenant): array
+    {
+        $usage = self::usage($tenant);
+
+        return $tenant->isLister() ? array_intersect_key($usage, array_flip(self::LISTER_KEYS)) : $usage;
+    }
+
     /** Info-only counters for this month. */
     public static function monthly(Tenant $tenant): array
     {

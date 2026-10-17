@@ -54,6 +54,16 @@ class PlatformSeeder extends Seeder
             }
         }
 
+        foreach (\App\Services\ListerPlans::defaults() as $i => [$name, $slug, $desc, $price, $default, $limits]) {
+            $plan = Plan::firstOrCreate(['slug' => $slug], [
+                'name' => $name, 'audience' => 'lister', 'description' => $desc, 'price' => $price, 'billing_cycle' => 'monthly', 'trial_days' => 14,
+                'is_trial_default' => $default, 'modules' => ['leads', 'ai'], 'sort' => 10 + $i,
+            ]);
+            foreach ($limits as $key => $value) {
+                $plan->limits()->firstOrCreate(['key' => $key], ['value' => $value]);
+            }
+        }
+
         Notify::seedTemplates();
 
         $services = [

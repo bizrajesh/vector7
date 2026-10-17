@@ -27,19 +27,24 @@ class PlanController extends Controller
             'sub' => $tenant->subscription,
             'usage' => PlanLimiter::usage($tenant),
             'monthly' => PlanLimiter::monthly($tenant),
-            'plans' => Plan::where('is_active', true)->with('limits')->orderBy('sort')->get(),
+            'plans' => Plan::where('is_active', true)->where('audience', $tenant->planAudience())->with('limits')->orderBy('sort')->get(),
             'invoices' => SubscriptionInvoice::with('plan')->where('status', '!=', 'cancelled')->latest('id')->take(24)->get(),
-            'packs' => TopupPack::where('is_active', true)->orderBy('sort')->get(),
+            'packs' => TopupPack::where('is_active', true)->when($tenant->isLister(), fn ($q) => $q->whereIn('key', self::LISTER_TOPUPS))->orderBy('sort')->get(),
+            'lister' => $tenant->isLister(),
             'topups' => TenantTopup::whereIn('status', ['active', 'pending'])->where(fn ($q) => $q->whereNull('ends_on')->orWhere('ends_on', '>=', today()))->latest('id')->get(),
             'gateway' => SubscriptionService::gatewayName(),
             'history' => UsageSnapshot::where('tenant_id', $tenant->id)->orderBy('month')->take(12)->get(),
         ]);
     }
 
+    /** Top-ups a property lister can buy (no projects, plots or extra users). */
+    public const LISTER_TOPUPS = ['listings', 'storage_mb'];
+
     public function upgrade(Request $request, Plan $plan)
     {
         abort_unless($plan->is_active, 404);
         $tenant = app(Tenancy::class)->get();
+        abort_unless($plan->audience === $tenant->planAudience(), 404);
         $invoice = SubscriptionInvoice::where('kind', 'plan')->where('plan_id', $plan->id)->where('status', 'due')->latest('id')->first()
             ?? SubscriptionService::createInvoice($tenant, $plan);
         if (SubscriptionService::gatewayName() === 'none') {
@@ -58,6 +63,7 @@ class PlanController extends Controller
         abort_unless($pack->is_active, 404);
         $qty = (int) $request->validate(['quantity' => 'required|integer|min:1|max:100'])['quantity'];
         $tenant = app(Tenancy::class)->get();
+        abort_if($tenant->isLister() && ! in_array($pack->key, self::LISTER_TOPUPS, true), 404);
         $invoice = TopupService::purchase($tenant, $pack, $qty, $request->user());
         if (SubscriptionService::gatewayName() === 'none') {
             return back()->with('ok', "Invoice {$invoice->number} created for {$pack->name}. vector7 adds the top-up once payment is received.");

@@ -56,6 +56,17 @@ class Tenant extends Model
         return $this->hasMany(NotificationGroup::class);
     }
 
+    public function isLister(): bool
+    {
+        return $this->type === 'lister';
+    }
+
+    /** Which plans this tenant can choose: promoter plans or property-lister plans. */
+    public function planAudience(): string
+    {
+        return $this->isLister() ? 'lister' : 'promoter';
+    }
+
     public function plan(): ?Plan
     {
         return $this->subscription?->plan;

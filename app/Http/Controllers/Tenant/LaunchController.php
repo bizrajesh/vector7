@@ -20,10 +20,37 @@ use Illuminate\Http\Request;
  */
 class LaunchController extends Controller
 {
+    /** Statuses of the project phase (approvals, estimate, stage tracking) that "Skip to launch" can jump over. */
+    public const PHASE_STATUSES = ['draft', 'init', 'go_no_go', 'in_progress'];
+
+    /**
+     * Skip the project phase: an existing project goes straight to Ready to Launch with its approval details,
+     * then the normal launch screen takes the layout, plots, photos and contact before Go live.
+     * Stage tracking and the estimate are kept as they are (nothing is deleted).
+     */
+    public function skip(Request $request, Project $project)
+    {
+        abort_unless(in_array($project->status, self::PHASE_STATUSES, true), 404);
+        $data = $request->validate([
+            'approval_type' => ['required', \Illuminate\Validation\Rule::in(Project::APPROVAL_TYPES)],
+            'approval_authority' => 'nullable|string|max:60',
+            'approval_number' => 'nullable|string|max:60',
+            'reason' => 'nullable|string|max:255',
+        ]);
+        $from = $project->statusLabel();
+        $project->update(['approval_type' => $data['approval_type'], 'approval_authority' => $data['approval_authority'] ?? $project->approval_authority,
+            'approval_number' => $data['approval_number'] ?? $project->approval_number]);
+        ProjectService::setStatus($project, 'ready_to_launch', 'Project phase skipped (was '.$from.') — going straight to launch.'.(! empty($data['reason']) ? ' Reason: '.$data['reason'] : ''));
+        \App\Services\AuditLogger::log('project_phase_skipped', $project, ['status' => $from], ['status' => 'ready_to_launch', 'reason' => $data['reason'] ?? null], $project->tenant_id);
+
+        return redirect()->route('ws.launch.show', $project)->with('ok', "{$project->name} is Ready to Launch. Upload the layout, load the plots, then press Go live.");
+    }
+
     public function index()
     {
         return view('ws.launch.index', [
             'ready' => Project::where('status', 'ready_to_launch')->withCount('plots')->orderBy('name')->get(),
+            'inPhase' => Project::whereIn('status', self::PHASE_STATUSES)->orderBy('name')->get(),
             'launched' => Project::where('status', 'launched')->withCount(['plots', 'plots as available_count' => fn ($q) => $q->where('status', 'available'), 'plots as sold_count' => fn ($q) => $q->where('status', 'sold')])->orderByDesc('launched_at')->get(),
         ]);
     }

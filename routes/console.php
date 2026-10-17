@@ -77,6 +77,9 @@ Artisan::command('v7:lead-soon', fn () => $this->info(\App\Services\LeadReminder
 
 Artisan::command('v7:chat-purge', fn () => $this->info(\App\Services\MarketBot::purge().' old conversation(s) deleted'))->purpose('Delete chatbot conversations older than 90 days');
 
+Artisan::command('v7:login-purge', fn () => $this->info(\App\Models\LoginEvent::where('created_at', '<', now()->subDays(180))->delete().' old sign-in record(s) deleted'))->purpose('Delete sign-in records older than 180 days');
+Schedule::command('v7:login-purge')->dailyAt('03:45');
+
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')->everyMinute()->withoutOverlapping()->runInBackground();
 Schedule::command('v7:bookings')->hourly()->withoutOverlapping();
 Schedule::command('v7:offers')->dailyAt('00:05');

@@ -23,7 +23,7 @@ class CustomerAuthController extends Controller
 
     public function login(Request $request)
     {
-        $c = LoginService::attempt($request, 'customer');
+        $c = LoginService::attempt($request, 'customer', null, 'buyer');
         if ($c->must_change_password) {
             return redirect()->route('account.force-password');
         }

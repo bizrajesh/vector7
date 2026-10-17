@@ -150,7 +150,7 @@ class SubscriptionService
                     }
                 }
             }
-            foreach (PlanLimiter::usage($tenant) as $key => $row) {
+            foreach (PlanLimiter::relevantUsage($tenant) as $key => $row) {
                 if ($row['unlimited'] || $row['limit'] <= 0) {
                     continue;
                 }

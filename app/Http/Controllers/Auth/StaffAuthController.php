@@ -25,7 +25,8 @@ class StaffAuthController extends Controller
 
     public function login(Request $request)
     {
-        $user = LoginService::attempt($request, 'web', fn ($u) => $u->isAppUser() ? 'This sign-in page is for promoter workspaces. vector7 App team members use their own sign-in page.' : null);
+        $user = LoginService::attempt($request, 'web', fn ($u) => $u->isAppUser() ? 'This sign-in page is for promoter workspaces. vector7 App team members use their own sign-in page.'
+            : ($u->isLister() ? 'Property listers sign in on the “List your property” page of the marketplace.' : null), 'promoter');
         if ($user->must_change_password) {
             return redirect()->route('staff.force-password');
         }
@@ -40,7 +41,7 @@ class StaffAuthController extends Controller
 
     public function appLogin(Request $request)
     {
-        $user = LoginService::attempt($request, 'web', fn ($u) => $u->isAppUser() ? null : 'These credentials do not match our records.');
+        $user = LoginService::attempt($request, 'web', fn ($u) => $u->isAppUser() ? null : 'These credentials do not match our records.', 'app');
         if ($user->must_change_password) {
             return redirect()->route('staff.force-password');
         }
@@ -54,11 +55,12 @@ class StaffAuthController extends Controller
             AuditLogger::log('logout', $u, null, null, $u->tenant_id);
         }
         $wasApp = Auth::guard('web')->user()?->isAppUser();
+        $wasLister = Auth::guard('web')->user()?->isLister();
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route($wasApp ? 'app.login' : 'staff.login')->with('ok', 'You have signed out.');
+        return redirect()->route($wasApp ? 'app.login' : ($wasLister ? 'lister.login' : 'staff.login'))->with('ok', 'You have signed out.');
     }
 
     public function showForgot()
@@ -92,10 +94,11 @@ class StaffAuthController extends Controller
             }
         );
 
-        $isApp = (bool) \App\Models\User::withoutGlobalScopes()->where('email', strtolower((string) $request->input('email')))->first()?->isAppUser();
+        $who = \App\Models\User::withoutGlobalScopes()->with(['role' => fn ($q) => $q->withoutGlobalScopes()])->where('email', strtolower((string) $request->input('email')))->first();
+        $isApp = (bool) $who?->isAppUser();
 
         return $status === Password::PASSWORD_RESET
-            ? redirect()->route($isApp ? 'app.login' : 'staff.login')->with('ok', 'Password changed. Please sign in.')
+            ? redirect()->route($isApp ? 'app.login' : ($who?->isLister() ? 'lister.login' : 'staff.login'))->with('ok', 'Password changed. Please sign in.')
             : back()->withErrors(['email' => __($status)]);
     }
 

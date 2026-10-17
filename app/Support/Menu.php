@@ -10,6 +10,20 @@ class Menu
 {
     public static function tenant(User $user): array
     {
+        if ($user->isLister()) {
+            return self::filter([
+                'My listings' => [
+                    ['Dashboard', 'ws.dashboard', 'home', 'dashboard.view', null],
+                    ['My listings', 'ws.listings.index', 'building', 'listings.view', null],
+                    ['Post a property', 'ws.listings.create', 'plus', 'listings.create', null],
+                    ['Enquiries & call-backs', 'ws.leads.index', 'chat', 'leads.view', null],
+                ],
+                'Account' => [
+                    ['My plan & usage', 'ws.settings.plan', 'tag', 'tenant_settings.view', null],
+                    ['Help desk', 'ws.tickets.index', 'lifebuoy', 'tickets.view', null],
+                ],
+            ], $user, fn () => true);
+        }
         $groups = [
             'Overview' => [
                 ['Dashboard', 'ws.dashboard', 'home', 'dashboard.view', null],
@@ -17,6 +31,7 @@ class Menu
             'Projects' => [
                 ['Projects', 'ws.projects.index', 'folder', 'projects.view', null],
                 ['Launch & plots', 'ws.launch.index', 'rocket', 'launch.view', 'launch'],
+                ['Direct launch', 'ws.quick-launch.create', 'plus', 'quick_launch.create', 'launch'],
                 ['Property listings', 'ws.listings.index', 'building', 'listings.view', null],
             ],
             'Sales' => [
@@ -71,6 +86,7 @@ class Menu
                 ['Prerequisites', 'app.masters.index', 'layers', 'prerequisites.view', null],
                 ['SEO', 'app.seo.index', 'globe', 'seo.view', null],
                 ['IAM', 'app.iam.index', 'shield', 'app_iam.view', null],
+                ['Security', 'app.security.index', 'lock', 'app_security.view', null],
                 ['Settings', 'app.settings.index', 'cog', 'app_settings.view', null],
                 ['Audit log', 'app.audit.index', 'database', 'audit.view', null],
             ],

@@ -21,23 +21,27 @@ class LoginService
     /**
      * @param  (callable(User|Customer): ?string)|null  $allow  returns an error message when this login page is not for that account
      */
-    public static function attempt(Request $request, string $guard, ?callable $allow = null): User|Customer
+    public static function attempt(Request $request, string $guard, ?callable $allow = null, ?string $portal = null): User|Customer
     {
+        $portal ??= $guard === 'customer' ? 'buyer' : 'promoter';
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'max:64'],
         ]);
         $model = $guard === 'customer' ? Customer::class : User::class;
         $account = app(Tenancy::class)->withoutScope(fn () => $model::query()->withoutGlobalScopes()->where('email', strtolower(trim($data['email'])))->first());
-        $fail = fn (string $msg) => throw ValidationException::withMessages(['email' => $msg]);
+        $fail = function (string $msg, string $outcome = 'failed', ?string $reason = null) use ($request, $portal, &$account) {
+            LoginEvents::record($request, $portal, $account ?: null, $outcome, $reason ?? $msg);
+            throw ValidationException::withMessages(['email' => $msg]);
+        };
 
         if (! $account) {
             Hash::check($data['password'], '$2y$12$'.str_repeat('a', 53)); // equalise timing
-            $fail(__('These credentials do not match our records.'));
+            $fail(__('These credentials do not match our records.'), 'failed', 'Unknown email');
         }
         if ($account->isLocked()) {
             $mins = max(1, (int) ceil(now()->diffInMinutes($account->locked_until)));
-            $fail(__('Too many wrong passwords. This account is locked for :mins more minute(s). An administrator can unlock it.', ['mins' => $mins]));
+            $fail(__('Too many wrong passwords. This account is locked for :mins more minute(s). An administrator can unlock it.', ['mins' => $mins]), 'locked', 'Tried while locked');
         }
         if (! Hash::check($data['password'], $account->password)) {
             $attempts = $account->failed_logins + 1;
@@ -48,25 +52,26 @@ class LoginService
             ])->saveQuietly();
             if ($lock) {
                 AuditLogger::log('account_locked', $account, null, ['email' => $account->email], $account->tenant_id ?? null);
-                $fail(__('Too many wrong passwords. This account is locked for 15 minutes.'));
+                $fail(__('Too many wrong passwords. This account is locked for 15 minutes.'), 'locked', 'Locked after '.config('auth.lockout.attempts', 5).' wrong passwords');
             }
-            $fail(__('These credentials do not match our records.'));
+            $fail(__('These credentials do not match our records.'), 'failed', 'Wrong password ('.$attempts.')');
         }
         if (! $account->is_active) {
-            $fail(__('This account is disabled. Contact your administrator.'));
+            $fail(__('This account is disabled. Contact your administrator.'), 'blocked', 'Account disabled');
         }
         if ($account instanceof User && $account->tenant_id && $account->tenant()->first()?->status !== 'active') {
-            $fail('This workspace is suspended. Contact vector7 support.');
+            $fail('This workspace is suspended. Contact vector7 support.', 'blocked', 'Workspace suspended');
         }
 
         if ($allow && ($msg = $allow($account))) {
-            $fail($msg);
+            $fail($msg, 'blocked', 'Wrong sign-in page');
         }
 
         $account->forceFill(['failed_logins' => 0, 'locked_until' => null, 'last_login_at' => now()])->saveQuietly();
         Auth::guard($guard)->login($account, $request->boolean('remember'));
         $request->session()->regenerate();
         AuditLogger::log('login', $account, null, null, $account->tenant_id ?? null);
+        LoginEvents::record($request, $portal, $account, 'success');
 
         return $account;
     }

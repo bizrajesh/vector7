@@ -83,9 +83,12 @@ class PageController extends Controller
     /** For promoters menu: "I want to" — launch layouts, or post individual properties. */
     public function pricing(Request $request)
     {
+        $for = $request->query('for') === 'listings' ? 'listings' : 'layouts';
+
         return view('market.pricing', [
-            'for' => $request->query('for') === 'listings' ? 'listings' : 'layouts',
-            'plans' => Plan::where('is_active', true)->with('limits')->orderBy('sort')->get(),
+            'for' => $for,
+            // "Post individual properties" shows the Property lister plans; "Sell plots in layouts" the promoter plans.
+            'plans' => Plan::where('is_active', true)->where('audience', $for === 'listings' ? 'lister' : 'promoter')->with('limits')->orderBy('sort')->get(),
             'seo' => SeoService::meta('page', 'pricing', 'vector7 for layout promoters – Plans', 'Run approvals, estimates, plot launch, bookings, payments and registration in one portal. Start a free trial.') + ['canonical' => route('market.pricing')],
             'jsonld' => [SeoService::softwareApplication(), SeoService::breadcrumbs([['Home', route('home')], ['For promoters', route('market.pricing')]])],
         ]);

@@ -14,6 +14,16 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Plan extends Model
 {
+    public const AUDIENCES = ['promoter' => 'Promoters', 'lister' => 'Property listers'];
+
+    public function scopeFor($q, string $audience) { return $q->where('audience', $audience); }
+
+    /** The trial plan new sign-ups of this audience start on. */
+    public static function trialFor(string $audience): ?self
+    {
+        return static::where('audience', $audience)->where('is_active', true)->orderByDesc('is_trial_default')->orderBy('sort')->first();
+    }
+
     protected $guarded = ['id'];
 
     protected function casts(): array

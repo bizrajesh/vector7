@@ -93,6 +93,11 @@ class User extends Authenticatable
         return $this->locked_until !== null && $this->locked_until->isFuture();
     }
 
+    public function isLister(): bool
+    {
+        return $this->baseRole() === Role::LISTER_ROLE;
+    }
+
     public function homeRoute(): string
     {
         return $this->isAppUser() ? route('app.dashboard') : route('ws.dashboard');

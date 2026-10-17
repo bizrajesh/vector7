@@ -15,14 +15,20 @@ class PlanController extends Controller
 {
     public function index()
     {
-        return view('app.plans.index', ['plans' => Plan::with('limits')->withCount(['limits'])->orderBy('sort')->get(),
+        return view('app.plans.index', ['plans' => Plan::with('limits')->withCount(['limits'])->orderBy('sort')->get()->groupBy('audience'),
             'counts' => Subscription::selectRaw('plan_id, COUNT(*) c')->whereIn('status', ['trial', 'active', 'past_due'])->groupBy('plan_id')->pluck('c', 'plan_id')]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('app.plans.form', ['plan' => new Plan(['billing_cycle' => 'monthly', 'trial_days' => 14, 'is_active' => true, 'modules' => array_keys(config('permissions.plan_modules'))])]);
+        $lister = $request->query('audience') === 'lister';
+
+        return view('app.plans.form', ['plan' => new Plan(['audience' => $lister ? 'lister' : 'promoter', 'billing_cycle' => 'monthly', 'trial_days' => 14, 'is_active' => true,
+            'modules' => $lister ? self::LISTER_MODULES : array_keys(config('permissions.plan_modules'))])]);
     }
+
+    /** Property listers only post listings and handle their enquiries. */
+    public const LISTER_MODULES = ['leads', 'ai'];
 
     public function store(Request $request)
     {
@@ -72,19 +78,22 @@ class PlanController extends Controller
             'modules' => 'array',
             'modules.*' => 'in:'.implode(',', array_keys(config('permissions.plan_modules'))),
             'sort' => 'nullable|integer|min:0',
+            'audience' => 'required|in:'.implode(',', array_keys(Plan::AUDIENCES)),
         ];
         foreach (array_keys(PlanLimiter::LIMIT_LABELS) as $k) {
             $rules["limits.$k"] = 'required|integer|min:-1';
         }
         $v = $request->validate($rules, ['limits.*.min' => 'Use -1 for unlimited.']);
         if ($request->boolean('is_trial_default')) {
-            Plan::query()->update(['is_trial_default' => false]);
+            Plan::where('audience', $v['audience'])->update(['is_trial_default' => false]);
         }
+        $lister = $v['audience'] === 'lister';
 
         return [
             'plan' => [
                 'name' => $v['name'], 'description' => $v['description'] ?? null, 'price' => $v['price'], 'billing_cycle' => $v['billing_cycle'],
-                'trial_days' => $v['trial_days'], 'modules' => array_values($v['modules'] ?? []), 'sort' => $v['sort'] ?? 0,
+                'trial_days' => $v['trial_days'], 'modules' => $lister ? self::LISTER_MODULES : array_values($v['modules'] ?? []), 'sort' => $v['sort'] ?? 0,
+                'audience' => $v['audience'],
                 'is_active' => $request->boolean('is_active'), 'is_trial_default' => $request->boolean('is_trial_default'),
             ],
             'limits' => $v['limits'],

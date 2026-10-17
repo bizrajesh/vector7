@@ -49,7 +49,8 @@ class TenantProvisioner
 
             return app(Tenancy::class)->run($tenant, function () use ($tenant, $data) {
                 self::defaults($tenant);
-                $plan = Plan::where('is_trial_default', true)->first() ?? Plan::orderBy('sort')->first();
+                $audience = $tenant->planAudience();
+                $plan = Plan::where('audience', $audience)->where('is_trial_default', true)->first() ?? Plan::trialFor($audience) ?? Plan::orderBy('sort')->first();
                 Subscription::create([
                     'tenant_id' => $tenant->id,
                     'plan_id' => $plan->id,
@@ -59,7 +60,7 @@ class TenantProvisioner
                 ]);
                 $admin = User::create([
                     'tenant_id' => $tenant->id,
-                    'role_id' => Role::systemRole('tenant_admin', $tenant->id)->id,
+                    'role_id' => Role::systemRole($tenant->isLister() ? Role::LISTER_ROLE : 'tenant_admin', $tenant->id)->id,
                     'user_code' => IdGenerator::next($tenant->id, 'user'),
                     'name' => $data['admin_name'] ?? $data['name'],
                     'email' => strtolower($data['email']),
@@ -75,6 +76,11 @@ class TenantProvisioner
 
     public static function defaults(Tenant $tenant): void
     {
+        if ($tenant->isLister()) {
+            self::listerDefaults($tenant);
+
+            return;
+        }
         Role::seedTenantRoles($tenant->id);
         IdGenerator::seedDefaults($tenant->id);
         TenantSetting::firstOrCreate(['tenant_id' => $tenant->id], self::DEFAULT_DISCLAIMERS);
@@ -110,6 +116,22 @@ class TenantProvisioner
         foreach (['Approval fees', 'Survey & legal', 'Civil works', 'Electrical', 'Marketing', 'Broker commission', 'Refunds', 'Office & admin', 'Other'] as $cat) {
             ExpenseCategory::firstOrCreate(['tenant_id' => $tenant->id, 'name' => $cat]);
         }
+    }
+
+    /** A property lister's workspace: one Property Lister user, listing / lead IDs, lead stages, contact defaults. */
+    private static function listerDefaults(Tenant $tenant): void
+    {
+        Role::firstOrCreate(['tenant_id' => $tenant->id, 'slug' => 'property-lister'],
+            ['name' => config('permissions.role_labels.property_lister'), 'base_role' => Role::LISTER_ROLE, 'is_system' => true]);
+        IdGenerator::seedDefaults($tenant->id);
+        TenantSetting::firstOrCreate(['tenant_id' => $tenant->id]);
+        foreach (\App\Models\LeadStage::DEFAULTS as $i => [$key, $name, $color, $won, $lost]) {
+            \App\Models\LeadStage::withoutGlobalScopes()->firstOrCreate(['tenant_id' => $tenant->id, 'key' => $key], ['name' => $name, 'sort' => $i, 'color' => $color, 'is_won' => $won, 'is_lost' => $lost]);
+        }
+        TenantSetting::where('tenant_id', $tenant->id)->whereNull('contact_mobile')->update([
+            'contact_name' => $tenant->name, 'contact_mobile' => $tenant->contact ?: $tenant->mobile,
+            'contact_whatsapp' => $tenant->contact ?: $tenant->mobile, 'contact_email' => $tenant->email,
+        ]);
     }
 
     /** Copy the App-level masters (tenant_id NULL) into the tenant's own editable copies. */

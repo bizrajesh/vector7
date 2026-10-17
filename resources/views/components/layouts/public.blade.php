@@ -19,7 +19,7 @@
     ];
     $buyOn = $routePurpose === 'buy' && $routeType !== \App\Listings\ListingTypes::LAYOUT_SLUG;
     $locale = app()->getLocale();
-    $postUrl = $staff && $staff->tenant_id ? route('ws.listings.create') : route('signup');
+    $postUrl = $staff && $staff->tenant_id ? route('ws.listings.create') : route('lister.register');
     $org = fn ($k) => \App\Services\AppSettings::get($k);
 @endphp
 <!DOCTYPE html>
@@ -74,8 +74,17 @@
             </div>
             @if ($customer)
                 <a href="{{ route('account.dashboard') }}" class="btn-primary btn-pill hidden sm:inline-flex">{{ __('My account') }}</a>
+            @elseif ($staff)
+                <a href="{{ $staff->homeRoute() }}" class="btn-primary btn-pill hidden sm:inline-flex">{{ $staff->isLister() ? __('My listings') : __('Workspace') }}</a>
             @else
-                <a href="{{ route('login') }}" class="btn-primary btn-pill hidden sm:inline-flex">{{ __('Sign in') }}</a>
+                <details class="relative hidden sm:block" data-dropdown>
+                    <summary class="btn-primary btn-pill list-none cursor-pointer">{{ __('Sign in') }} <x-icon name="chevron-down" class="h-4 w-4" /></summary>
+                    <ul class="absolute right-0 top-full z-50 mt-1 w-64 rounded-xl bg-white p-2 shadow-lift ring-1 ring-navy-50">
+                        <li><a href="{{ route('login') }}" class="block rounded-lg px-3 py-2 text-sm no-underline hover:bg-page"><span class="font-semibold text-navy">{{ __('Buyer') }}</span><span class="block text-xs text-muted">{{ __('Shortlist, bookings, payments') }}</span></a></li>
+                        <li><a href="{{ route('lister.login') }}" class="block rounded-lg px-3 py-2 text-sm no-underline hover:bg-page"><span class="font-semibold text-navy">{{ __('Property lister') }}</span><span class="block text-xs text-muted">{{ __('Post and track your listings') }}</span></a></li>
+                        <li><a href="{{ route('staff.login') }}" class="block rounded-lg px-3 py-2 text-sm no-underline hover:bg-page"><span class="font-semibold text-navy">{{ __('Layout promoter') }}</span><span class="block text-xs text-muted">{{ __('Promoter workspace') }}</span></a></li>
+                    </ul>
+                </details>
             @endif
             <a href="{{ $postUrl }}" class="btn btn-pill hidden whitespace-nowrap bg-gold text-navy hover:bg-amber-300 {{ $locale === 'ta' ? 'xl:inline-flex' : 'md:inline-flex' }}"><x-icon name="plus" class="h-4 w-4" /> {{ __('Post property') }}</a>
             <a href="{{ route('market.search') }}" class="rounded-lg p-2 text-navy lg:hidden" aria-label="{{ __('Search') }}"><x-icon name="search" class="h-6 w-6" /></a>
@@ -88,9 +97,10 @@
         <div class="my-2 border-t border-navy-50"></div>
         @foreach ($nav as [$label, $url, $on])<a href="{{ $url }}" class="block rounded-lg px-3 py-3 font-medium text-navy no-underline hover:bg-page">{{ $label }}</a>@endforeach
         <div class="mt-2 grid grid-cols-2 gap-2">
-            <a href="{{ $customer ? route('account.dashboard') : route('login') }}" class="btn-primary btn-pill">{{ $customer ? 'My account' : 'Sign in' }}</a>
+            <a href="{{ $customer ? route('account.dashboard') : route('login') }}" class="btn-primary btn-pill">{{ $customer ? __('My account') : __('Buyer sign in') }}</a>
             <a href="{{ $postUrl }}" class="btn btn-pill bg-gold text-navy">{{ __('Post property') }}</a>
-            <a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="btn-light btn-pill col-span-2">{{ __('Promoter workspace') }}</a>
+            <a href="{{ $staff && $staff->isLister() ? $staff->homeRoute() : route('lister.login') }}" class="btn-light btn-pill">{{ __('Property lister') }}</a>
+            <a href="{{ $staff && ! $staff->isLister() ? $staff->homeRoute() : route('staff.login') }}" class="btn-light btn-pill">{{ __('Promoter workspace') }}</a>
         </div>
     </nav>
 </header>
@@ -130,7 +140,9 @@
             <p class="font-bold text-white">{{ __('vector7') }}</p>
             <ul class="mt-3 space-y-2 text-sm">
                 <li><a href="{{ route('market.pricing') }}" class="text-navy-100 hover:text-white">{{ __('For promoters') }}</a></li>
-                <li><a href="{{ $staff ? $staff->homeRoute() : route('staff.login') }}" class="text-navy-100 hover:text-white">{{ __('Promoter workspace') }}</a></li>
+                <li><a href="{{ route('lister.register') }}" class="text-navy-100 hover:text-white">{{ __('List your property') }}</a></li>
+                <li><a href="{{ route('lister.login') }}" class="text-navy-100 hover:text-white">{{ __('Property lister sign in') }}</a></li>
+                <li><a href="{{ $staff && ! $staff->isLister() ? $staff->homeRoute() : route('staff.login') }}" class="text-navy-100 hover:text-white">{{ __('Promoter workspace') }}</a></li>
                 <li><a href="{{ route('market.about') }}" class="text-navy-100 hover:text-white">{{ __('About') }}</a></li>
                 <li><a href="{{ route('market.support') }}" class="text-navy-100 hover:text-white">{{ __('Support') }}</a></li>
                 <li><a href="{{ route('market.privacy') }}" class="text-navy-100 hover:text-white">{{ __('Privacy') }}</a></li>

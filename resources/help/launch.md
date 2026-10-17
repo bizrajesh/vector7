@@ -2,10 +2,14 @@
 title: Launch & plots
 audience: tenant
 route: ws.launch.index
-keywords: launch, plots, import, csv, layout, map, pins, offer
+keywords: launch, plots, import, csv, layout, map, pins, offer, skip project phase, direct launch
 ---
 # Launch & plots
 **Launch & plots** lists projects that are Ready to Launch and those already launched.
+
+**Two ways to skip the project phase:**
+- **Direct launch** (button at the top, also in the menu) — for a layout that is already approved and not yet in vector7. Enter the launch details, upload the layout and photos, and paste or upload the plots. It goes live in one step. See *Quick launch a layout*.
+- **Skip to launch** (under *Still in the project phase*) — for a project you already created that is still in Draft, Init, Go/No-Go or In Progress. Confirm the approval type, authority and number. The project moves to **Ready to Launch**, and you then add the layout, plots, photos and contact below and press **Go live**. Its stages and estimate stay as they are. Only Tenant Admins and Managers with *Launch – approve* can do this, and each skip is recorded in the audit log.
 
 **Who:** Tenant Admin and Manager launch, upload the layout, import or edit plots and set prices or offers. Sales and Support see everything read-only.
 

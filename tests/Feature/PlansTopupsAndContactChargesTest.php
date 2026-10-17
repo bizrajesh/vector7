@@ -58,7 +58,7 @@ class PlansTopupsAndContactChargesTest extends TestCase
 
     public function test_plans_are_starter_growth_enterprise_with_five_plan_items(): void
     {
-        $this->assertSame(['Starter', 'Growth', 'Enterprise'], Plan::orderBy('sort')->pluck('name')->all());
+        $this->assertSame(['Starter', 'Growth', 'Enterprise'], Plan::where('audience', 'promoter')->orderBy('sort')->pluck('name')->all());
         $starter = Plan::where('slug', 'starter')->first();
         foreach (PlanLimiter::PLAN_ITEMS as $key) {
             $this->assertNotNull($starter->limits->firstWhere('key', $key), $key);
@@ -72,7 +72,7 @@ class PlansTopupsAndContactChargesTest extends TestCase
         $limits = collect(PlanLimiter::LIMIT_LABELS)->map(fn () => -1)->all();
         $limits = array_merge($limits, ['storage_mb' => 2048, 'projects' => 3, 'plots' => 300, 'users' => 6, 'listings' => 8, 'images_per_listing' => 12, 'ai_credits' => 50]);
         $this->actingAs($admin)->put(route('app.plans.update', $starter), [
-            'name' => 'Starter', 'price' => 2499, 'billing_cycle' => 'monthly', 'trial_days' => 14, 'is_active' => 1, 'modules' => ['leads'], 'limits' => $limits,
+            'audience' => 'promoter', 'name' => 'Starter', 'price' => 2499, 'billing_cycle' => 'monthly', 'trial_days' => 14, 'is_active' => 1, 'modules' => ['leads'], 'limits' => $limits,
         ])->assertSessionHasNoErrors()->assertRedirect(route('app.plans.index'));
         $this->assertSame(300, $starter->fresh()->limit('plots'));
         $this->assertSame(6, $starter->fresh()->limit('users'));

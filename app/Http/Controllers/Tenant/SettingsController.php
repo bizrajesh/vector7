@@ -19,6 +19,9 @@ class SettingsController extends Controller
     public function index(Request $request)
     {
         $tenant = app(Tenancy::class)->get();
+        if ($tenant->isLister()) {
+            return redirect()->route('ws.settings.plan'); // listers have no promoter settings
+        }
 
         return view('ws.settings.index', [
             'tenant' => $tenant,

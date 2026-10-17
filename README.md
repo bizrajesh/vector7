@@ -24,6 +24,7 @@ This guide is written for a non-developer. Follow the steps in order.
 11. [Feature Update 01: listings, leads, AI search and chatbots](#11-feature-update-01-listings-leads-ai-search-and-chatbots)
 12. [Marketplace in Tamil and English, menus and the App sign-in](#12-marketplace-in-tamil-and-english-menus-and-the-app-sign-in)
 13. [Plans, top-ups and contact view charges](#13-plans-top-ups-and-contact-view-charges)
+14. [Direct launch, Property Listers and App Support](#14-direct-launch-property-listers-and-app-support)
 
 ---
 
@@ -558,4 +559,65 @@ The request becomes a lead in the owner's **Leads & enquiries** with:
 - a follow-up already scheduled for the time chosen.
 
 The owner also gets an email if the listing has a contact email. Filter the lead list by source *Call-back request* to see them all.
+
+---
+
+## 14. Direct launch, Property Listers and App Support
+
+### 14.1 Upgrading an existing installation
+
+```
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+The migration adds:
+- `plans.audience` (promoter or lister);
+- the `login_events` table;
+- the **App Support** role and its *Security monitoring* permission;
+- three Property Lister plans.
+
+Nothing existing is changed. A new daily job, `v7:login-purge` at 03:45, deletes sign-in records older than 180 days. It runs from the same one cron entry.
+
+### 14.2 Launch without the project phase (promoters)
+
+**Launch & plots** now offers two ways to go straight to the marketplace:
+- **Direct launch** (button and menu item): for a layout that is already approved. It is the existing quick launch screen — launch details, layout, photos, plots and contact, live in one step. Nothing is needed from the project phase: no Go/No-Go, estimate or stage tracking.
+- **Skip to launch**: for a project already in vector7 that is still in Draft, Init, Go/No-Go or In Progress. Confirm the approval details and it moves to **Ready to Launch**. Then upload the layout, load the plots (CSV / Excel / AI extraction), add photos and contact, and press **Go live**.
+
+Both need *Launch – approve*, so Tenant Admin and Manager can use them. Stages and estimates are kept, and each skip is written to the audit log.
+
+### 14.3 Property Listers
+
+| | |
+|---|---|
+| Who | Independent owners and agents who only post listings. They are separate from layout promoters, whose listing feature is unchanged. |
+| Sign up | Marketplace → **Post property**, or **List your property** in the footer (`/list-property`). |
+| Sign in | Marketplace → **Sign in → Property lister** (`/list-property/login`). The promoter page `/workspace/login` sends listers back to their own page, and the lister page does not accept promoters. |
+| Workspace | Dashboard (views, enquiries, open call-backs and number unlocks per listing), My listings, Post a property, Enquiries & call-backs, My plan & usage, Help desk. Everything else (projects, bookings, IAM, settings) is closed to them. |
+| Plans | Lister Basic ₹199 (10 listings), Lister Plus ₹499 (30), Lister Pro ₹999 (100), each with a 14-day trial. The 5 free active listings apply too. Listers can only buy listing and storage top-ups. |
+
+The marketplace **Sign in** button is now a menu with three choices: Buyer, Property lister and Layout promoter. The App sign-in is still never linked.
+
+### 14.4 Plans for Property Listers (App → Plans)
+
+The Plans page has two sections, **Promoter plans** and **Property lister plans**, each with its own **New … plan** button. A lister plan sets listings, storage, images per listing and AI credits. Each audience has its own "Use for new sign-ups" (trial default) plan. The marketplace pricing page shows lister plans under *Post individual properties*.
+
+### 14.5 App Support role and security monitoring
+
+| App role | Can use |
+|---|---|
+| App Admin | Everything, including **Security** |
+| App Manager | As before (no chatbot logs, no Security) |
+| **App Support** (new) | Help desk tickets (service requests arrive as tickets), Enquiries, Chatbot conversations, **Security**, plus read-only Services, Customers and Listings moderation. Their home page is a support queue. |
+
+Create App Support users under App → **IAM** with the role *App Support*.
+
+**Security** (App menu) has four tabs:
+1. **Signed-in sessions** — who is signed in now, with IP, browser and device, and when they signed in and were last active. Press **End session** to sign someone out.
+2. **Sign-in activity** — every attempt on the buyer, promoter, lister and App sign-in pages: signed in, failed, locked or blocked, with the reason, IP and device. Filter it, or export to Excel.
+3. **Failed attempts by IP** — counts for the last hour, 24 hours or 7 days, flagging IPs that try many accounts.
+4. **Locked accounts** — press **Unlock** to release one.
+
+Passwords are never stored.
 

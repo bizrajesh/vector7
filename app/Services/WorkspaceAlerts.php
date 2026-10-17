@@ -37,7 +37,7 @@ class WorkspaceAlerts
                     $alerts[] = ['level' => $days <= 1 ? 'red' : 'amber', 'text' => ($sub->status === 'trial' ? 'Your trial' : 'Your subscription').' ends '.($days === 0 ? 'today' : "in $days day".($days > 1 ? 's' : '')).' ('.Format::date($sub->ends_on).').', 'link' => $planLink, 'banner' => true];
                 }
             }
-            foreach (PlanLimiter::usage($tenant) as $row) {
+            foreach (PlanLimiter::relevantUsage($tenant) as $row) {
                 if (! $row['unlimited'] && $row['limit'] > 0 && $row['pct'] >= 80) {
                     $alerts[] = ['level' => $row['pct'] >= 100 ? 'red' : 'amber', 'text' => "{$row['label']}: {$row['pct']}% of your plan used ({$row['display']['used']} of {$row['display']['limit']}).", 'link' => $planLink, 'banner' => true];
                 }

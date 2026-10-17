@@ -11,7 +11,10 @@ class Role extends Model
 {
     use Auditable, BelongsToTenant;
 
-    public const APP_ROLES = ['app_admin', 'app_manager'];
+    public const APP_ROLES = ['app_admin', 'app_manager', 'app_support'];
+
+    /** Independent property lister (own lister workspace; never offered to promoters). */
+    public const LISTER_ROLE = 'property_lister';
 
     public const TENANT_ROLES = ['tenant_admin', 'tenant_manager', 'tenant_sales', 'tenant_account', 'support'];
 

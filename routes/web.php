@@ -115,6 +115,13 @@ Route::middleware('guest:web')->group(function () {
     Route::get('/app/login', [Auth\StaffAuthController::class, 'showAppLogin'])->name('app.login');
     Route::post('/app/login', [Auth\StaffAuthController::class, 'appLogin'])->middleware('throttle:login')->name('app.login.post');
 });
+// Property listers (independent owners / agents) sign up and sign in from the marketplace
+Route::middleware('guest:web')->prefix('list-property')->group(function () {
+    Route::get('/', [Auth\ListerAuthController::class, 'showRegister'])->name('lister.register');
+    Route::post('/', [Auth\ListerAuthController::class, 'register'])->middleware('throttle:register')->name('lister.register.store');
+    Route::get('/login', [Auth\ListerAuthController::class, 'showLogin'])->name('lister.login');
+    Route::post('/login', [Auth\ListerAuthController::class, 'login'])->middleware('throttle:login')->name('lister.login.post');
+});
 Route::prefix('workspace')->group(function () {
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', [Auth\StaffAuthController::class, 'showLogin'])->name('staff.login');
@@ -248,6 +255,7 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
         Route::post('/launch/{project}/import', [Tenant\PlotImportController::class, 'preview'])->middleware('perm:launch.create')->name('launch.import');
         Route::post('/launch/{project}/extract', [Tenant\PlotImportController::class, 'extract'])->middleware(['perm:launch.create', 'throttle:ai'])->name('launch.extract');
         Route::post('/launch/{project}/import/confirm', [Tenant\PlotImportController::class, 'confirm'])->middleware('perm:launch.create')->name('launch.import.confirm');
+        Route::post('/launch/{project}/skip', [Tenant\LaunchController::class, 'skip'])->middleware('perm:launch.approve')->name('launch.skip');
         Route::post('/launch/{project}/go-live', [Tenant\LaunchController::class, 'goLive'])->middleware('perm:launch.approve')->name('launch.go-live');
         Route::get('/launch/{project}/plots/export', [Tenant\PlotController::class, 'export'])->middleware('perm:launch.export')->name('plots.export');
         Route::get('/launch/{project}/plots/{plot}/edit', [Tenant\PlotController::class, 'edit'])->middleware('perm:launch.update')->name('plots.edit');
@@ -416,6 +424,9 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::post('/invoices/{invoice}/paid', [App\SubscriptionController::class, 'markPaid'])->middleware('perm:subscriptions.approve')->name('invoices.paid');
     Route::get('/invoices/{invoice}', [App\SubscriptionController::class, 'invoice'])->middleware('perm:subscriptions.view')->name('invoices.show');
 
+    Route::get('/security', [App\SecurityController::class, 'index'])->middleware('perm:app_security.view')->name('security.index');
+    Route::delete('/security/sessions/{id}', [App\SecurityController::class, 'endSession'])->middleware('perm:app_security.update')->name('security.end');
+    Route::post('/security/unlock', [App\SecurityController::class, 'unlock'])->middleware('perm:app_security.update')->name('security.unlock');
     Route::get('/users', [App\IamController::class, 'index'])->middleware('perm:app_iam.view')->name('iam.index');
     Route::post('/users', [App\IamController::class, 'store'])->middleware('perm:app_iam.create')->name('iam.store');
     Route::put('/users/{user}', [App\IamController::class, 'update'])->middleware('perm:app_iam.update')->name('iam.update');

@@ -4,6 +4,7 @@
     </x-page-header>
     <x-filters>
         <x-field name="q" label="Search" :value="request('q')" placeholder="Name, tenant ID, email" />
+        <x-select name="type" label="Kind" :options="['promoter' => 'Promoters', 'lister' => 'Property listers']" :value="request('type')" placeholder="All" />
         <x-select name="plan" label="Plan" :options="$plans->pluck('name', 'id')" :value="request('plan')" placeholder="All plans" />
         <x-select name="status" label="Status" :options="['trial' => 'Trial', 'active' => 'Active', 'past_due' => 'Past due', 'expired' => 'Expired', 'cancelled' => 'Cancelled']" :value="request('status')" placeholder="Any" />
         <x-select name="near" label="Near limit" :options="['1' => '80% or more of any limit']" :value="request('near')" placeholder="All tenants" />
@@ -14,7 +15,7 @@
             <a href="{{ route('app.subscriptions.show', $t) }}" class="card block p-4 text-navy no-underline transition hover:shadow-lift">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="font-bold">{{ $t->name }} @if ($t->status !== 'active')<span class="badge-red ml-1">Suspended</span>@endif</p>
+                        <p class="font-bold">{{ $t->name }} @if ($t->isLister())<span class="badge-blue ml-1">Property lister</span>@endif @if ($t->status !== 'active')<span class="badge-red ml-1">Suspended</span>@endif</p>
                         <p class="text-xs text-muted">{{ $t->code }} · {{ $t->city }}</p>
                     </div>
                     <div class="text-right text-sm">
@@ -23,7 +24,7 @@
                     </div>
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
-                    @foreach (['storage_mb', 'projects', 'ai_credits', 'users_tenant_sales'] as $k)
+                    @foreach ($t->isLister() ? ['listings', 'storage_mb', 'images_per_listing', 'ai_credits'] : ['storage_mb', 'projects', 'plots', 'users'] as $k)
                         @php($u = $r['usage'][$k])
                         <div>
                             <div class="flex justify-between text-xs"><span class="text-muted">{{ $u['label'] }}</span><span class="font-semibold">{{ $u['display']['used'] }} / {{ $u['display']['limit'] }}</span></div>

@@ -30,6 +30,9 @@ class SubscriptionController extends Controller
 
             return ['tenant' => $t, 'sub' => $t->subscription, 'usage' => $usage, 'max' => $max];
         });
+        if ($type = $request->query('type')) {
+            $rows = $rows->filter(fn ($r) => $r['tenant']->planAudience() === $type);
+        }
         if ($p = $request->query('plan')) {
             $rows = $rows->filter(fn ($r) => (string) $r['sub']?->plan_id === (string) $p);
         }

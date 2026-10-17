@@ -44,6 +44,7 @@ $appModules = [
     'audit' => 'Audit log',
     'app_listings' => 'Listings moderation',
     'app_chats' => 'Chatbot conversations',
+    'app_security' => 'Security monitoring (sessions, sign-ins)',
 ];
 
 $tenantModules = [
@@ -99,13 +100,27 @@ return [
         'tenant_sales' => 'Tenant Sales',
         'tenant_account' => 'Tenant Account',
         'support' => 'Support',
+        'app_support' => 'App Support',
+        'property_lister' => 'Property Lister',
     ],
 
     'roles' => [
         'app_admin' => $grant(array_fill_keys(array_keys($appModules), $all)),
 
-        // Every App module except IAM and Settings (chatbot conversation logs are App Admin only)
-        'app_manager' => $grant(array_fill_keys(array_diff(array_keys($appModules), ['app_iam', 'app_settings', 'audit', 'app_chats']), $all)),
+        // Every App module except IAM and Settings (chatbot conversation logs are App Admin / App Support only)
+        'app_manager' => $grant(array_fill_keys(array_diff(array_keys($appModules), ['app_iam', 'app_settings', 'audit', 'app_chats', 'app_security']), $all)),
+
+        // App Support: service requests, enquiries, help desk, chatbot conversations and security monitoring
+        'app_support' => $grant([
+            'app_dashboard' => ['view'],
+            'services' => ['view', 'export'],
+            'app_enquiries' => ['view', 'create', 'update', 'export'],
+            'helpdesk' => ['view', 'create', 'update', 'export'],
+            'app_chats' => ['view', 'export'],
+            'app_security' => ['view', 'update', 'export'],
+            'customers' => ['view'],
+            'app_listings' => ['view'],
+        ]),
 
         'tenant_admin' => $grant(array_fill_keys(array_keys($tenantModules), $all)),
 
@@ -157,6 +172,16 @@ return [
             'reports' => $ro,
             'workspace_bot' => ['view'],
             'tickets' => ['view', 'create'],
+        ]),
+
+        // Independent owner / agent who only lists properties (own workspace, own plans). Not a promoter role.
+        'property_lister' => $grant([
+            'dashboard' => ['view'],
+            'tenant_settings' => ['view', 'update'],
+            'listings' => $crud,
+            'leads' => $cru,
+            'tickets' => ['view', 'create'],
+            'workspace_bot' => ['view'],
         ]),
 
         'support' => $grant([

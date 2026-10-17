@@ -1,5 +1,5 @@
 <x-layouts.workspace title="My plan & usage">
-    <x-page-header title="My plan & usage" :back="route('ws.settings.index')" />
+    <x-page-header title="My plan & usage" :back="$lister ? null : route('ws.settings.index')" />
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="card card-pad lg:col-span-2">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -12,10 +12,19 @@
                 </div>
                 <span class="{{ $sub && $sub->isUsable() ? 'badge-teal' : 'badge-red' }}">{{ $sub ? ucfirst(str_replace('_', ' ', $sub->status)) : 'None' }}</span>
             </div>
-            <div class="mt-5">@include('partials.usage-table')</div>
-            <p class="mt-4 text-sm text-muted">This month: {{ $monthly['plots_launched'] }} plots launched · {{ $monthly['bookings'] }} bookings · {{ $monthly['sales'] }} sales.</p>
+            <div class="mt-5">@include('partials.usage-table', ['usage' => $lister ? array_intersect_key($usage, array_flip(\App\Services\PlanLimiter::LISTER_KEYS)) : $usage])</div>
+            @unless ($lister)<p class="mt-4 text-sm text-muted">This month: {{ $monthly['plots_launched'] }} plots launched · {{ $monthly['bookings'] }} bookings · {{ $monthly['sales'] }} sales.</p>@endunless
         </div>
         <div class="card card-pad">
+            @if ($lister)
+                <h2 class="section-title">Your listing plan</h2>
+                <ul class="mt-3 space-y-2 text-sm">
+                    <li>{{ \App\Services\PlanLimiter::freeListings() }} active listings are always free.</li>
+                    <li>Photos up to {{ \App\Services\PropertyMedia::maxKb() / 1024 }} MB each.</li>
+                    <li>Enquiries and call-back requests from buyers go to <a href="{{ route('ws.leads.index') }}" class="font-semibold">Enquiries & call-backs</a>.</li>
+                    <li>Buyers who pay to see your number also show up there. You are not charged for them.</li>
+                </ul>
+            @else
             <h2 class="section-title">Enabled modules</h2>
             <ul class="mt-3 space-y-2 text-sm">
                 @foreach (config('permissions.plan_modules') as $m => $label)
@@ -23,6 +32,7 @@
                     <li class="flex items-center gap-2 {{ $on ? '' : 'text-muted' }}">{!! \App\Support\Icons::svg($on ? 'check' : 'x', 'h-4 w-4 '.($on ? 'text-teal-700' : 'text-red-600')) !!} {{ $label }}</li>
                 @endforeach
             </ul>
+            @endif
         </div>
     </div>
 
@@ -35,7 +45,7 @@
                 <p class="mt-1 text-sm text-muted">{{ $p->description }}</p>
                 <p class="mt-3 text-3xl font-extrabold">@inr($p->price)<span class="text-sm font-semibold text-muted">/{{ $p->billing_cycle === 'yearly' ? 'year' : 'month' }} + GST</span></p>
                 <ul class="mt-3 flex-1 space-y-1 text-sm">
-                    @foreach (['storage_mb' => 'storage', 'projects' => 'projects', 'plots' => 'plots', 'users' => 'users (all roles)', 'listings' => 'active listings', 'ai_credits' => 'AI credits / month'] as $k => $l)
+                    @foreach ($lister ? ['listings' => 'active listings', 'images_per_listing' => 'photos per listing', 'storage_mb' => 'storage', 'ai_credits' => 'AI credits / month'] : ['storage_mb' => 'storage', 'projects' => 'projects', 'plots' => 'plots', 'users' => 'users (all roles)', 'listings' => 'active listings', 'ai_credits' => 'AI credits / month'] as $k => $l)
                         @php($v = $k === 'listings' && $p->limit($k) >= 0 ? max($p->limit($k), \App\Services\PlanLimiter::freeListings()) : $p->limit($k))
                         <li>{!! \App\Support\Icons::svg('check', 'h-4 w-4 inline text-teal-700') !!} @include('app.plans.limit-value', ['k' => $k, 'v' => $v]) {{ $l }}</li>
                     @endforeach
@@ -50,7 +60,7 @@
     </div>
 
     <h2 class="mb-1 mt-8 text-xl font-extrabold">Top-ups</h2>
-    <p class="mb-3 text-sm text-muted">Need a little more without changing plan? Add extra users, projects, plots, storage or listings. Prices are per month + GST; a top-up runs until your plan period ends{{ $sub && $sub->isUsable() ? ' ('.\App\Support\Format::date($sub->ends_on).')' : '' }}, so you pay for the months left in it.</p>
+    <p class="mb-3 text-sm text-muted">Need a little more without changing plan? Add extra {{ $lister ? 'listings or storage' : 'users, projects, plots, storage or listings' }}. Prices are per month + GST; a top-up runs until your plan period ends{{ $sub && $sub->isUsable() ? ' ('.\App\Support\Format::date($sub->ends_on).')' : '' }}, so you pay for the months left in it.</p>
     @if ($topups->isNotEmpty())
         <div class="mb-4 flex flex-wrap gap-2">
             @foreach ($topups as $t)

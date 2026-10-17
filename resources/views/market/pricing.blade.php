@@ -15,14 +15,14 @@
             <ul class="mt-6 grid max-w-3xl gap-2 text-lg text-muted sm:grid-cols-2">
                 @foreach ($points as $pt)<li class="flex gap-2"><span class="mt-1 text-teal-700">{!! \App\Support\Icons::svg('check', 'h-5 w-5') !!}</span>{{ $pt }}</li>@endforeach
             </ul>
-            <div class="mt-8 flex flex-wrap gap-3"><a href="{{ route('signup') }}" class="btn-primary btn-pill px-8 py-3">{{ __('Start free trial') }}</a><a href="{{ route('staff.login') }}" class="btn-light btn-pill px-8 py-3">{{ __('Promoter sign in') }}</a></div>
+            <div class="mt-8 flex flex-wrap gap-3"><a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="btn-primary btn-pill px-8 py-3">{{ __('Start free trial') }}</a><a href="{{ $isListings ? route('lister.login') : route('staff.login') }}" class="btn-light btn-pill px-8 py-3">{{ $isListings ? __('Property lister sign in') : __('Promoter sign in') }}</a></div>
         </div>
     </section>
     <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div class="grid gap-6 md:grid-cols-3">
             @foreach ($plans as $p)
                 <div class="card card-pad flex flex-col {{ $loop->index === 1 ? 'ring-2 ring-teal' : '' }}">
-                    <h2 class="text-2xl font-extrabold">{{ $p->name }}</h2>
+                    <h2 class="text-2xl font-extrabold">{{ __($p->name) }}</h2>
                     <p class="mt-1 text-sm text-muted">{{ __($p->description) }}</p>
                     <p class="mt-5 text-4xl font-extrabold">@inr($p->price)<span class="text-base font-semibold text-muted"> / {{ $p->billing_cycle === 'yearly' ? __('year') : __('month') }}</span></p>
                     <p class="text-xs text-muted">{{ __('+ GST · :days-day free trial', ['days' => $p->trial_days]) }}</p>
@@ -38,14 +38,19 @@
                             <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n live property listings', ['n' => $lim('listings')]) }}</li>
                         @endif
                         <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':size document storage', ['size' => $p->limit('storage_mb') < 0 ? __('Unlimited') : \App\Support\Format::bytes($p->limit('storage_mb') * 1048576)]) }}</li>
-                        <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n users (any role)', ['n' => $lim('users')]) }}</li>
+                        @unless ($isListings)<li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n users (any role)', ['n' => $lim('users')]) }}</li>@endunless
                         <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __(':n AI credits a month', ['n' => $lim('ai_credits')]) }}</li>
-                        <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Top up users, projects, plots, storage or listings any time') }}</li>
-                        @foreach (config('permissions.plan_modules') as $m => $label)
-                            @if ($p->hasModule($m))<li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __($label) }}</li>@endif
-                        @endforeach
+                        @if ($isListings)
+                            <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Enquiries, call-back requests and listing views in one dashboard') }}</li>
+                            <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Top up listings or storage any time') }}</li>
+                        @else
+                            <li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __('Top up users, projects, plots, storage or listings any time') }}</li>
+                            @foreach (config('permissions.plan_modules') as $m => $label)
+                                @if ($p->hasModule($m))<li class="flex gap-2"><span class="text-teal-700">{!! $tick !!}</span>{{ __($label) }}</li>@endif
+                            @endforeach
+                        @endif
                     </ul>
-                    <a href="{{ route('signup') }}" class="{{ $loop->index === 1 ? 'btn-primary' : 'btn-light' }} btn-pill mt-6">{{ __('Start with :plan', ['plan' => $p->name]) }}</a>
+                    <a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="{{ $loop->index === 1 ? 'btn-primary' : 'btn-light' }} btn-pill mt-6">{{ __('Start with :plan', ['plan' => __($p->name)]) }}</a>
                 </div>
             @endforeach
         </div>
