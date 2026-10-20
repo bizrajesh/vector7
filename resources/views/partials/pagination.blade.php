@@ -1,5 +1,5 @@
 @if ($paginator->hasPages())
-<nav class="mt-4 flex items-center justify-between gap-2 text-sm" aria-label="{{ __('Pagination') }}">
+<nav class="mt-4 flex items-center justify-between gap-2 text-sm" aria-label="{{ __('Page navigation') }}">
     <p class="text-muted">{{ __('Showing :from–:to of :total', ['from' => $paginator->firstItem(), 'to' => $paginator->lastItem(), 'total' => \App\Support\Format::num($paginator->total())]) }}</p>
     <div class="flex gap-1">
         @if ($paginator->onFirstPage())

@@ -475,7 +475,6 @@
     "Overhead tank": "மேல்நிலைத் தொட்டி",
     "Overhead water tank": "மேல்நிலை நீர்த் தொட்டி",
     "PIN": "அஞ்சல் குறியீடு",
-    "Pagination": "பக்கங்கள்",
     "Paid": "செலுத்தப்பட்டது",
     "Park": "பூங்கா",
     "Park / children's play area": "பூங்கா / குழந்தைகள் விளையாட்டுப் பகுதி",
@@ -954,5 +953,6 @@
     "This sign-in page is for property listers. Promoters and their teams use the promoter workspace sign-in.": "இந்த உள்நுழைவுப் பக்கம் சொத்து பட்டியலிடுபவர்களுக்கானது. புரமோட்டர்களும் அவர்களின் குழுக்களும் புரமோட்டர் பணியிட உள்நுழைவைப் பயன்படுத்தவும்.",
     "Top up listings or storage any time": "பட்டியல்கள் அல்லது சேமிப்பகத்தை எப்போது வேண்டுமானாலும் கூடுதலாகச் சேர்க்கலாம்",
     "Welcome! Post your first property — it goes live as soon as you publish it.": "வரவேற்கிறோம்! உங்கள் முதல் சொத்தைப் பதிவிடுங்கள் — வெளியிட்டவுடன் அது நேரலையில் வரும்.",
-    "Workspace": "பணியிடம்"
+    "Workspace": "பணியிடம்",
+    "Page navigation": "பக்கங்கள்"
 }
