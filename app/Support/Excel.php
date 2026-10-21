@@ -49,7 +49,8 @@ class Excel
         foreach ($reader->getSheetIterator() as $sheet) {
             $n = 1;
             foreach ($sheet->getRowIterator() as $row) {
-                $cells = $row->toArray();
+                // Formula cells: use the value Excel / Google Sheets last calculated, not the formula text.
+                $cells = array_map(fn ($cell) => $cell instanceof \OpenSpout\Common\Entity\Cell\FormulaCell ? $cell->getComputedValue() : $cell->getValue(), $row->cells);
                 if ($headers === null) {
                     $headers = array_map(fn ($h) => strtolower(trim((string) $h)), $cells);
 
