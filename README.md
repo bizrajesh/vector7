@@ -632,7 +632,7 @@ Sign-in is always on the marketplace (buyers, property listers, promoters). **Si
 
 ### 15.2 Plot status on the marketplace
 
-Buyers see only **Available**, **Booked** or **Blocked**. Every other stage (Sale Init, ROR-Init, ROR, ROR-Completed, Sold, Blocked) shows as **Blocked**, and those plots stay on the layout map instead of disappearing. The workspace keeps the real status.
+Buyers see only **Available**, **Booked**, **Sold** or **Blocked**. Every other stage (Sale Init, ROR-Init, ROR, ROR-Completed) shows as **Blocked**. Sold plots stay on the layout map (marked Sold) instead of disappearing. The workspace keeps the real status.
 
 ### 15.3 Plot onboarding
 

@@ -12,11 +12,11 @@ use Tests\TestCase;
 /** Production: marketplace plot statuses, plot onboarding from the template, and the test-data clean-up script. */
 class ProductionReadinessTest extends TestCase
 {
-    public function test_marketplace_shows_only_available_booked_or_blocked(): void
+    public function test_marketplace_shows_only_available_booked_sold_or_blocked(): void
     {
         foreach (Plot::STATUSES as $key => $label) {
             $p = new Plot(['status' => $key, 'size_sqft' => 1000, 'rate_per_sqft' => 900, 'plot_no' => '1']);
-            $expected = in_array($key, ['available', 'booked'], true) ? $key : 'blocked';
+            $expected = in_array($key, ['available', 'booked', 'sold'], true) ? $key : 'blocked';
             $this->assertSame($expected, $p->marketStatus(), $key);
             $this->assertSame(Plot::MARKET_STATUSES[$expected], $p->tooltipData()['status']);
             $this->assertSame($expected, $p->tooltipData()['statusKey']);
@@ -32,15 +32,16 @@ class ProductionReadinessTest extends TestCase
             }
         });
         $html = $this->get($project->fresh()->publicUrl())->assertOk()->getContent();
-        foreach (['Sale Init', 'ROR', 'Sold'] as $hidden) {
+        foreach (['Sale Init', 'ROR'] as $hidden) {
             $this->assertStringNotContainsString('>'.$hidden.'<', $html, $hidden);
             $this->assertStringNotContainsString('"status":"'.$hidden.'"', $html, $hidden);
         }
         $this->assertStringContainsString('data-status="blocked"', $html);
         $this->assertStringContainsString('data-status="booked"', $html);
-        $this->assertSame(4, substr_count($html, 'data-status="blocked"'), 'Sale Init, ROR, Sold and Blocked all show as Blocked');
+        $this->assertSame(3, substr_count($html, 'data-status="blocked"'), 'Sale Init, ROR and Blocked show as Blocked');
+        $this->assertSame(1, substr_count($html, 'data-status="sold"'));
         $sold = Plot::withoutGlobalScopes()->where('plot_no', 'D1')->first()->setRelation('project', $project->fresh());
-        $this->get($sold->publicUrl())->assertOk()->assertSee('This plot is Blocked');
+        $this->get($sold->publicUrl())->assertOk()->assertSee('This plot is Sold')->assertDontSee('Book this plot');
     }
 
     public function test_plot_onboarding_page_template_and_upload(): void

@@ -1,7 +1,7 @@
 {{--
     Interactive plot map. Plots are drawn over the layout picture (DXF outlines or pins placed in Launch),
     coloured by status; every shape/tile shows the plot tooltip on hover, focus or tap.
-    Vars: $project, $plots, $layoutUrl (image URL or null), $internal (workspace: real statuses; marketplace: Available / Booked / Blocked)
+    Vars: $project, $plots, $layoutUrl (image URL or null), $internal (workspace: real statuses; marketplace: Available / Booked / Sold / Blocked)
 --}}
 @php
     $internal = $internal ?? false;

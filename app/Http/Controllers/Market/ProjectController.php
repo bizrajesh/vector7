@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
-/** Public project & plot pages. Only launched projects. Buyers see three statuses: Available, Booked, Blocked (every other stage, Sold included, shows as Blocked). */
+/** Public project & plot pages. Only launched projects. Buyers see Available, Booked, Sold or Blocked (every other stage shows as Blocked). */
 class ProjectController extends Controller
 {
     public function index(Request $request)

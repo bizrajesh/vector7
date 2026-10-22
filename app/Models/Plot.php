@@ -38,12 +38,13 @@ class Plot extends Model
     ];
 
     /**
-     * What buyers see on the marketplace: only Available, Booked or Blocked.
-     * Every other stage (Sale Init, ROR…, Sold, Blocked) shows as Blocked; the workspace keeps the real status.
+     * What buyers see on the marketplace: only Available, Booked, Sold or Blocked.
+     * Every other stage (Sale Init, ROR-Init, ROR, ROR-Completed, Blocked) shows as Blocked; the workspace keeps the real status.
      */
     public const MARKET_STATUSES = [
         'available' => 'Available',
         'booked' => 'Booked',
+        'sold' => 'Sold',
         'blocked' => 'Blocked',
     ];
 
@@ -133,10 +134,10 @@ class Plot extends Model
         return self::COLORS[$this->status] ?? '#64748B';
     }
 
-    /** Marketplace status key: available | booked | blocked. */
+    /** Marketplace status key: available | booked | sold | blocked. */
     public function marketStatus(): string
     {
-        return in_array($this->status, ['available', 'booked'], true) ? $this->status : 'blocked';
+        return in_array($this->status, ['available', 'booked', 'sold'], true) ? $this->status : 'blocked';
     }
 
     public function marketStatusLabel(): string

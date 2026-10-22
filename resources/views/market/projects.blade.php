@@ -27,7 +27,7 @@
                         @if ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
                             <img src="{{ $p->layoutUrl() }}" alt="{{ __('Layout plan of :name', ['name' => $p->name]) }}" class="aspect-[16/10] w-full object-cover" width="{{ $p->layout_width ?: 800 }}" height="{{ $p->layout_height ?: 500 }}" loading="lazy" decoding="async">
                         @else
-                            <div class="grid aspect-[16/10] grid-cols-10 gap-1 p-4" aria-hidden="true">@foreach ($p->plots->take(60) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
+                            <div class="grid aspect-[16/10] grid-cols-10 gap-1 p-4" aria-hidden="true">@foreach ($p->plots->take(60) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'sold' => 'bg-slate-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
                         @endif
                     </a>
                     <div class="p-5">

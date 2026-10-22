@@ -76,8 +76,8 @@ class RegistrationTest extends TestCase
         $this->actingAs($c, 'customer')->get(route('account.file', $file))->assertOk();
         $this->actingAs($this->makeCustomer(), 'customer')->get(route('account.file', $file))->assertNotFound();
         auth('customer')->logout();
-        // Sold plots stay on the layout, shown to buyers as Blocked.
-        $this->get($p->publicUrl())->assertOk()->assertSee('data-no="7"', false)->assertDontSee('>Sold<', false);
+        // Sold plots stay on the layout, marked Sold.
+        $this->get($p->publicUrl())->assertOk()->assertSee('data-no="7"', false)->assertSee('data-status="sold"', false);
         $this->actingAs($admin)->get(route('ws.registrations.index'))->assertOk();
     }
 }

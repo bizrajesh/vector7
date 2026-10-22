@@ -72,7 +72,7 @@
                 @endforeach
                 </tbody>
             </table></div>
-            <p class="p-4 text-xs text-muted">Buyers on the marketplace see only <strong>Available</strong>, <strong>Booked</strong> or <strong>Blocked</strong>. Every other stage (Sale Init, ROR, Sold…) shows as Blocked.</p>
+            <p class="p-4 text-xs text-muted">Buyers on the marketplace see only <strong>Available</strong>, <strong>Booked</strong>, <strong>Sold</strong> or <strong>Blocked</strong>. Every other stage (Sale Init, ROR-Init, ROR, ROR-Completed) shows as Blocked.</p>
         </div>
     </div>
 </x-layouts.workspace>

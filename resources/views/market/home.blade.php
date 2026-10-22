@@ -59,7 +59,7 @@
                                         @elseif ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
                                             <img src="{{ $p->layoutUrl() }}" alt="{{ __('Layout plan of :name', ['name' => $p->name]) }}" class="aspect-[4/3] w-full object-cover" width="{{ $p->layout_width ?: 800 }}" height="{{ $p->layout_height ?: 600 }}" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif>
                                         @else
-                                            <div class="grid aspect-[4/3] grid-cols-8 gap-1 p-4">@foreach ($p->plots->take(48) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
+                                            <div class="grid aspect-[4/3] grid-cols-8 gap-1 p-4">@foreach ($p->plots->take(48) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'sold' => 'bg-slate-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
                                         @endif
                                     </a>
                                     <div class="mt-4 flex flex-wrap items-end justify-between gap-3 px-1">
