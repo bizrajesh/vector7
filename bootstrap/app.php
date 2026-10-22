@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (MiddlewareConfig $middleware): void {
-        $middleware->web(append: [Middleware\SetMarketLocale::class, Middleware\SecurityHeaders::class]);
+        $middleware->web(append: [Middleware\SetMarketLocale::class, Middleware\SecurityHeaders::class, Middleware\PreviewGate::class]);
         $middleware->alias([
             'staff' => Middleware\EnsureStaff::class,
             'appuser' => Middleware\EnsureAppUser::class,
@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'perm' => Middleware\CheckPermission::class,
             'module' => Middleware\CheckPlanModule::class,
             'customer' => Middleware\EnsureCustomer::class,
+            'signup' => Middleware\EnsureRegistrationOpen::class,
         ]);
         // Tenant must be set before route-model binding so guessed IDs of other tenants 404.
         $middleware->prependToPriorityList(\Illuminate\Routing\Middleware\SubstituteBindings::class, Middleware\EnsureTenantUser::class);

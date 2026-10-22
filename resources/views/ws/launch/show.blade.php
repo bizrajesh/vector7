@@ -30,7 +30,7 @@
                 </div>
                 <div class="mt-4">
                     @if ($layoutUrl || $plots->isNotEmpty())
-                        @include('partials.plot-map', ['plots' => $plots, 'layoutUrl' => $layoutUrl])
+                        @include('partials.plot-map', ['plots' => $plots, 'layoutUrl' => $layoutUrl, 'internal' => true])
                     @else
                         <x-empty title="No layout uploaded yet" icon="map" />
                     @endif
@@ -71,7 +71,7 @@
                     <tbody>
                     @forelse ($plots as $p)
                         <tr>
-                            <td class="font-bold" data-plot='@json($p->tooltipData())'>{{ $p->plot_no }} @if ($p->is_corner)<span class="badge-gray">Corner</span>@endif</td>
+                            <td class="font-bold" data-plot='@json($p->tooltipData(true))'>{{ $p->plot_no }} @if ($p->is_corner)<span class="badge-gray">Corner</span>@endif</td>
                             <td class="text-sm">{{ $p->patta_number }}</td>
                             <td class="num">{{ \App\Support\Format::num($p->size_sqft) }}</td>
                             <td class="text-sm">{{ $p->facing }}</td>

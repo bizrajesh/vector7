@@ -55,8 +55,6 @@
                         <div><dt class="text-muted">{{ $label }}</dt><dd class="font-semibold">{{ $value }}</dd></div>
                     @endforeach
                     @if ($listing->facing && ! isset($specTable['Facing']))<div><dt class="text-muted">{{ __('Facing') }}</dt><dd class="font-semibold">{{ $listing->facing }}</dd></div>@endif
-                    @if ($listing->patta_number)<div><dt class="text-muted">{{ __('Patta number') }}</dt><dd class="font-semibold">{{ $listing->patta_number }}</dd></div>@endif
-                    @if ($listing->survey_number)<div><dt class="text-muted">{{ __('Survey number') }}</dt><dd class="font-semibold">{{ $listing->survey_number }}</dd></div>@endif
                     <div><dt class="text-muted">{{ __('Listing ID') }}</dt><dd class="font-semibold">{{ $listing->listing_code }}</dd></div>
                     @if ($listing->published_at)<div><dt class="text-muted">{{ __('Listed on') }}</dt><dd class="font-semibold">@date($listing->published_at)</dd></div>@endif
                 </dl>

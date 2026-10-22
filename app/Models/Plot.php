@@ -152,12 +152,15 @@ class Plot extends Model
         ]);
     }
 
-    /** Data for tooltips/cards (JSON, rendered by public/js/app.js). */
-    public function tooltipData(): array
+    /**
+     * Data for tooltips/cards (JSON, rendered by public/js/app.js).
+     * The patta number is only included for the promoter's own workspace — the marketplace never shows patta or survey numbers.
+     */
+    public function tooltipData(bool $internal = false): array
     {
         return [
             'no' => $this->plot_no,
-            'patta' => $this->patta_number,
+            'patta' => $internal ? $this->patta_number : null,
             'sqft' => (float) $this->size_sqft,
             'cents' => $this->cents(),
             'dim' => $this->dimensions(),

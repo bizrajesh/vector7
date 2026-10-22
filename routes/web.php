@@ -56,8 +56,8 @@ Route::post('/webhooks/payment/{gateway}', [WebhookController::class, 'payment']
 Route::middleware('guest:customer')->group(function () {
     Route::get('/login', [Auth\CustomerAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [Auth\CustomerAuthController::class, 'login'])->middleware('throttle:login')->name('customer.login');
-    Route::get('/register', [Auth\CustomerAuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [Auth\CustomerAuthController::class, 'register'])->middleware('throttle:register')->name('customer.register');
+    Route::get('/register', [Auth\CustomerAuthController::class, 'showRegister'])->middleware('signup')->name('register');
+    Route::post('/register', [Auth\CustomerAuthController::class, 'register'])->middleware(['signup', 'throttle:register'])->name('customer.register');
     Route::get('/forgot-password', [Auth\CustomerAuthController::class, 'showForgot'])->name('customer.password.request');
     Route::post('/forgot-password', [Auth\CustomerAuthController::class, 'sendReset'])->middleware('throttle:forgot')->name('customer.password.email');
     Route::get('/reset-password/{token}', [Auth\CustomerAuthController::class, 'showReset'])->name('customer.password.reset');
@@ -115,10 +115,14 @@ Route::middleware('guest:web')->group(function () {
     Route::get('/app/login', [Auth\StaffAuthController::class, 'showAppLogin'])->name('app.login');
     Route::post('/app/login', [Auth\StaffAuthController::class, 'appLogin'])->middleware('throttle:login')->name('app.login.post');
 });
+// Testing preview gate (config/vector7.php, PREVIEW_GATE=true): one shared sign-in in front of the whole site
+Route::get('/preview-login', [Auth\PreviewGateController::class, 'show'])->name('preview.login');
+Route::post('/preview-login', [Auth\PreviewGateController::class, 'login'])->middleware('throttle:login')->name('preview.login.post');
+
 // Property listers (independent owners / agents) sign up and sign in from the marketplace
 Route::middleware('guest:web')->prefix('list-property')->group(function () {
-    Route::get('/', [Auth\ListerAuthController::class, 'showRegister'])->name('lister.register');
-    Route::post('/', [Auth\ListerAuthController::class, 'register'])->middleware('throttle:register')->name('lister.register.store');
+    Route::get('/', [Auth\ListerAuthController::class, 'showRegister'])->middleware('signup')->name('lister.register');
+    Route::post('/', [Auth\ListerAuthController::class, 'register'])->middleware(['signup', 'throttle:register'])->name('lister.register.store');
     Route::get('/login', [Auth\ListerAuthController::class, 'showLogin'])->name('lister.login');
     Route::post('/login', [Auth\ListerAuthController::class, 'login'])->middleware('throttle:login')->name('lister.login.post');
 });
@@ -126,8 +130,8 @@ Route::prefix('workspace')->group(function () {
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', [Auth\StaffAuthController::class, 'showLogin'])->name('staff.login');
         Route::post('/login', [Auth\StaffAuthController::class, 'login'])->middleware('throttle:login')->name('staff.login.post');
-        Route::get('/create', [Auth\SignupController::class, 'show'])->name('signup');
-        Route::post('/create', [Auth\SignupController::class, 'store'])->middleware('throttle:register')->name('signup.store');
+        Route::get('/create', [Auth\SignupController::class, 'show'])->middleware('signup')->name('signup');
+        Route::post('/create', [Auth\SignupController::class, 'store'])->middleware(['signup', 'throttle:register'])->name('signup.store');
         Route::get('/forgot-password', [Auth\StaffAuthController::class, 'showForgot'])->name('password.request');
         Route::post('/forgot-password', [Auth\StaffAuthController::class, 'sendReset'])->middleware('throttle:forgot')->name('password.email');
         Route::get('/reset-password/{token}', [Auth\StaffAuthController::class, 'showReset'])->name('password.reset');

@@ -142,7 +142,7 @@
         <h2 class="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">{{ __('From a plot you like to a registered sale deed') }}</h2>
         <ol class="mt-10 grid gap-6 md:grid-cols-4">
             @foreach ([
-                ['Pick a plot on the live map', 'Every plot shows its patta number, size, facing, boundaries and today\'s price — offers included.'],
+                ['Pick a plot on the live map', 'Every plot shows its size, facing, boundaries and today\'s price — offers included.'],
                 ['Book it online', 'Booking is free. The plot is held for you for the promoter\'s booking period while you pay the first instalment.'],
                 ['Pay in instalments', 'Pay the promoter by bank transfer, UPI or cheque. Every payment gets a numbered receipt in your account.'],
                 ['Register', 'The promoter prepares the registration pack and the sale deed is registered at your SRO.'],

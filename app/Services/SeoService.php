@@ -65,7 +65,7 @@ class SeoService
         return [
             'title' => "Plot {$plot->plot_no}, {$p->name} – ".Format::num($plot->size_sqft).' sq ft',
             'description' => Format::num($plot->size_sqft)." sq ft {$plot->facing}-facing plot {$plot->plot_no} in {$p->name}, {$p->location}. "
-                .'Price '.Format::inr($plot->currentPrice()).($plot->offerIsActive() ? ' (offer till '.$plot->offer_valid_till->format('d-m-Y').')' : '').'. Patta '.$plot->patta_number.'. Book on vector7.',
+                .'Price '.Format::inr($plot->currentPrice()).($plot->offerIsActive() ? ' (offer till '.$plot->offer_valid_till->format('d-m-Y').')' : '').'. Book on vector7.',
         ];
     }
 
@@ -316,7 +316,6 @@ class SeoService
             'additionalProperty' => [
                 ['@type' => 'PropertyValue', 'name' => 'Area', 'value' => (float) $plot->size_sqft, 'unitText' => 'sq ft'],
                 ['@type' => 'PropertyValue', 'name' => 'Facing', 'value' => $plot->facing],
-                ['@type' => 'PropertyValue', 'name' => 'Patta number', 'value' => $plot->patta_number],
             ],
             'offers' => $offer,
         ];

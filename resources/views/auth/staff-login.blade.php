@@ -11,5 +11,5 @@
         </div>
         <button class="btn-primary w-full btn-pill py-3">Sign in</button>
     </form>
-    <x-slot:below>New promoter? <a href="{{ route('signup') }}" class="font-semibold">Create a workspace</a> · Buying a plot? <a href="{{ route('login') }}" class="font-semibold">Customer sign in</a></x-slot:below>
+    <x-slot:below>@if (config('vector7.registration_open'))New promoter? <a href="{{ route('signup') }}" class="font-semibold">Create a workspace</a> · @endif Buying a plot? <a href="{{ route('login') }}" class="font-semibold">Customer sign in</a></x-slot:below>
 </x-layouts.auth>

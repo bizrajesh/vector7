@@ -19,7 +19,7 @@
     ];
     $buyOn = $routePurpose === 'buy' && $routeType !== \App\Listings\ListingTypes::LAYOUT_SLUG;
     $locale = app()->getLocale();
-    $postUrl = $staff && $staff->tenant_id ? route('ws.listings.create') : route('lister.register');
+    $postUrl = $staff && $staff->tenant_id ? route('ws.listings.create') : (config('vector7.registration_open') ? route('lister.register') : route('lister.login'));
     $org = fn ($k) => \App\Services\AppSettings::get($k);
 @endphp
 <!DOCTYPE html>
@@ -133,14 +133,18 @@
                 <li><a href="{{ route('market.category', ['purpose' => 'rent']) }}" class="text-navy-100 hover:text-white">{{ __('Properties for rent') }}</a></li>
                 <li><a href="{{ route('market.requirement') }}" class="text-navy-100 hover:text-white">{{ __('Find a plot for my needs') }}</a></li>
                 <li><a href="{{ route('market.services') }}" class="text-navy-100 hover:text-white">{{ __('Legal, survey & loan help') }}</a></li>
+                @if (config('vector7.registration_open'))
                 <li><a href="{{ route('register') }}" class="text-navy-100 hover:text-white">{{ __('Create a free account') }}</a></li>
+                @endif
             </ul>
         </div>
         <div>
             <p class="font-bold text-white">{{ __('vector7') }}</p>
             <ul class="mt-3 space-y-2 text-sm">
                 <li><a href="{{ route('market.pricing') }}" class="text-navy-100 hover:text-white">{{ __('For promoters') }}</a></li>
+                @if (config('vector7.registration_open'))
                 <li><a href="{{ route('lister.register') }}" class="text-navy-100 hover:text-white">{{ __('List your property') }}</a></li>
+                @endif
                 <li><a href="{{ route('lister.login') }}" class="text-navy-100 hover:text-white">{{ __('Property lister sign in') }}</a></li>
                 <li><a href="{{ $staff && ! $staff->isLister() ? $staff->homeRoute() : route('staff.login') }}" class="text-navy-100 hover:text-white">{{ __('Promoter workspace') }}</a></li>
                 <li><a href="{{ route('market.about') }}" class="text-navy-100 hover:text-white">{{ __('About') }}</a></li>

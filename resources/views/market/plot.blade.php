@@ -14,7 +14,6 @@
                         [__('Size'), \App\Support\Format::num($plot->size_sqft).' '.__('sq ft'), $plot->cents().' '.__('cents')],
                         [__('Dimensions'), $plot->dimensions() ?? '—', null],
                         [__('Facing'), __($plot->facing), null],
-                        [__('Patta number'), $plot->patta_number, null],
                         [__('Road width'), $plot->road_width_ft ? (float) $plot->road_width_ft.' '.__('ft') : '—', null],
                         [__('Corner plot'), $plot->is_corner ? __('Yes') : __('No'), null],
                     ] as [$k, $v, $sub])

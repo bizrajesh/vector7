@@ -9,7 +9,7 @@ class LoginEvent extends Model
 {
     public const UPDATED_AT = null;
 
-    public const PORTALS = ['buyer' => 'Buyer', 'promoter' => 'Promoter workspace', 'lister' => 'Property lister', 'app' => 'App team'];
+    public const PORTALS = ['buyer' => 'Buyer', 'promoter' => 'Promoter workspace', 'lister' => 'Property lister', 'app' => 'App team', 'preview' => 'Preview gate'];
 
     public const OUTCOMES = ['success' => 'Signed in', 'failed' => 'Wrong password / unknown', 'locked' => 'Account locked', 'blocked' => 'Blocked'];
 

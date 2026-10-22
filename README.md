@@ -25,6 +25,7 @@ This guide is written for a non-developer. Follow the steps in order.
 12. [Marketplace in Tamil and English, menus and the App sign-in](#12-marketplace-in-tamil-and-english-menus-and-the-app-sign-in)
 13. [Plans, top-ups and contact view charges](#13-plans-top-ups-and-contact-view-charges)
 14. [Direct launch, Property Listers and App Support](#14-direct-launch-property-listers-and-app-support)
+15. [Testing on the live server: preview sign-in and closed sign-ups](#15-testing-on-the-live-server-preview-sign-in-and-closed-sign-ups)
 
 ---
 
@@ -620,4 +621,23 @@ Create App Support users under App → **IAM** with the role *App Support*.
 4. **Locked accounts** — press **Unlock** to release one.
 
 Passwords are never stored.
+
+---
+
+## 15. Testing on the live server: preview sign-in and closed sign-ups
+
+While the site is being tested on the live host, three switches in `.env` keep it private:
+
+| `.env` line | What it does |
+|---|---|
+| `PREVIEW_GATE=true` | Every page first asks for one shared email and password (`/preview-login`). After that, the tester's browser stays signed in for `PREVIEW_GATE_REMEMBER_DAYS` (default 30). Payment webhooks and `/up` stay open. Pages carry `noindex`. |
+| `PREVIEW_GATE_EMAIL=...` / `PREVIEW_GATE_PASSWORD_HASH='...'` | The shared sign-in. Only the **hash** of the password is stored. Make it with `php artisan v7:gate-hash` and keep the single quotes. Changing the hash signs every tester out. |
+| `REGISTRATION_OPEN=false` | Nobody can create buyer, property lister or promoter accounts from the website. The sign-up pages say "New accounts are not open yet", and the "Create account" links are hidden. Existing accounts still sign in, and the App team and promoters can still add users. |
+| `SEO_INDEXABLE=false` | `robots.txt` blocks everything and pages are `noindex`. |
+
+Preview sign-in attempts are listed in App → **Security → Sign-in activity** (page "Preview gate").
+
+**Going public later:** set `PREVIEW_GATE=false`, `REGISTRATION_OPEN=true` and `SEO_INDEXABLE=true`. Then run `php artisan config:cache` and `php artisan seo:build`. The marketplace home page becomes the landing page again; no code change is needed.
+
+**Patta and survey numbers** are never shown on the marketplace: not on the listing, layout or plot pages, plot map tooltips, booking page or search-engine data. Promoters still see them in their workspace.
 

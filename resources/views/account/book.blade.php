@@ -3,7 +3,7 @@
         <div class="card card-pad lg:col-span-3">
             <p class="text-sm text-muted">{{ $plot->project->name }} · {{ $plot->project->location }} · {{ __('by :name', ['name' => $tenant->name]) }}</p>
             <h2 class="mt-1 text-3xl font-extrabold">{{ __('Plot :no', ['no' => $plot->plot_no]) }}</h2>
-            <p class="mt-1 text-muted">{{ \App\Support\Format::num($plot->size_sqft) }} {{ __('sq ft') }} · {{ __(':facing facing', ['facing' => __($plot->facing)]) }} · {{ __('Patta :no', ['no' => $plot->patta_number]) }}</p>
+            <p class="mt-1 text-muted">{{ \App\Support\Format::num($plot->size_sqft) }} {{ __('sq ft') }} · {{ __(':facing facing', ['facing' => __($plot->facing)]) }}</p>
             <div class="mt-5">@include('partials.plot-price', ['plot' => $plot, 'size' => 'lg'])</div>
             @if ($plot->status !== 'available')
                 <div class="flash-err mt-6">{{ __('This plot is :status and cannot be booked.', ['status' => __($plot->statusLabel())]) }} <a href="{{ $plot->project->publicUrl() }}">{{ __('See other plots') }}</a>.</div>
