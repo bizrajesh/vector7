@@ -37,6 +37,16 @@ class Plot extends Model
         'blocked' => '#DC2626',
     ];
 
+    /**
+     * What buyers see on the marketplace: only Available, Booked or Blocked.
+     * Every other stage (Sale Init, ROR…, Sold, Blocked) shows as Blocked; the workspace keeps the real status.
+     */
+    public const MARKET_STATUSES = [
+        'available' => 'Available',
+        'booked' => 'Booked',
+        'blocked' => 'Blocked',
+    ];
+
     public const FACINGS = ['East', 'West', 'North', 'South', 'North-East', 'North-West', 'South-East', 'South-West'];
 
     protected $guarded = ['id'];
@@ -123,6 +133,23 @@ class Plot extends Model
         return self::COLORS[$this->status] ?? '#64748B';
     }
 
+    /** Marketplace status key: available | booked | blocked. */
+    public function marketStatus(): string
+    {
+        return in_array($this->status, ['available', 'booked'], true) ? $this->status : 'blocked';
+    }
+
+    public function marketStatusLabel(): string
+    {
+        return self::MARKET_STATUSES[$this->marketStatus()];
+    }
+
+    /** Status key, label and colour for a screen: the real status in the workspace, the simplified one on the marketplace. */
+    public function shownStatus(bool $internal = false): string
+    {
+        return $internal ? $this->status : $this->marketStatus();
+    }
+
     public function dimensions(): ?string
     {
         return $this->length_ft && $this->width_ft ? rtrim(rtrim((string) $this->length_ft, '0'), '.').' × '.rtrim(rtrim((string) $this->width_ft, '0'), '.').' ft' : null;
@@ -171,8 +198,8 @@ class Plot extends Model
             's' => $this->south_boundary,
             'road' => $this->road_width_ft ? (float) $this->road_width_ft : null,
             'corner' => $this->is_corner,
-            'status' => $this->statusLabel(),
-            'statusKey' => $this->status,
+            'status' => $internal ? $this->statusLabel() : $this->marketStatusLabel(),
+            'statusKey' => $this->shownStatus($internal),
             'actual' => $this->actualPrice(),
             'offer' => $this->offerIsActive() ? $this->offerPrice() : null,
             'offerText' => $this->offerIsActive() ? $this->offer_text : null,

@@ -99,7 +99,7 @@
                 <div class="card card-pad">
                     <h2 class="section-title">Load plots</h2>
                     <p class="mt-1 text-sm text-muted">Header names must match the sample. Re-importing matches on <code>plot_no</code> and updates those plots. Nothing is imported until every error is fixed.</p>
-                    <a href="{{ route('ws.launch.sample') }}" class="mt-2 inline-flex text-sm font-semibold"><x-icon name="download" class="mr-1 h-4 w-4" /> Download sample (3 rows)</a>
+                    <a href="{{ route('ws.plot-onboarding.template') }}" class="mt-2 inline-flex text-sm font-semibold"><x-icon name="download" class="mr-1 h-4 w-4" /> Plot onboarding template (.xlsx)</a> <a href="{{ route('ws.launch.sample') }}" class="ml-3 mt-2 inline-flex text-xs">or sample CSV</a>
                     <form method="POST" action="{{ route('ws.launch.import', $project) }}" enctype="multipart/form-data" class="mt-4 space-y-3">
                         @csrf
                         <x-field name="file" type="file" label="CSV or Excel file" accept=".csv,.xlsx" />

@@ -32,6 +32,7 @@ class Menu
                 ['Projects', 'ws.projects.index', 'folder', 'projects.view', null],
                 ['Launch & plots', 'ws.launch.index', 'rocket', 'launch.view', 'launch'],
                 ['Direct launch', 'ws.quick-launch.create', 'plus', 'quick_launch.create', 'launch'],
+                ['Plot onboarding', 'ws.plot-onboarding.index', 'grid', 'launch.create', 'launch'],
                 ['Property listings', 'ws.listings.index', 'building', 'listings.view', null],
             ],
             'Sales' => [

@@ -1,6 +1,7 @@
 <x-layouts.public :seo="$seo" :jsonld="$jsonld">
     @php
         $isListings = $for === 'listings';
+        $canSignUp = \App\Support\Signups::open($isListings ? 'lister' : 'promoter');
         $points = $isListings
             ? [__('Post plots, flats, villas, houses, farm land and shops with 3–20 photos, video and a map pin'), __('Buyers call, WhatsApp or email you — every contact lands in Leads'), __('Follow-up reminders, lead stages and reports for your sales team'), __('Masked numbers and consent stop spam calls')]
             : [__('Estimate the layout and track every approval stage with its documents'), __('Quick launch an already-approved layout with photos, plots and offers'), __('Online booking, instalments, receipts and registration packs'), __('Leads, follow-ups and reports for your sales team')];
@@ -15,7 +16,7 @@
             <ul class="mt-6 grid max-w-3xl gap-2 text-lg text-muted sm:grid-cols-2">
                 @foreach ($points as $pt)<li class="flex gap-2"><span class="mt-1 text-teal-700">{!! \App\Support\Icons::svg('check', 'h-5 w-5') !!}</span>{{ $pt }}</li>@endforeach
             </ul>
-            <div class="mt-8 flex flex-wrap gap-3"><a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="btn-primary btn-pill px-8 py-3">{{ __('Start free trial') }}</a><a href="{{ $isListings ? route('lister.login') : route('staff.login') }}" class="btn-light btn-pill px-8 py-3">{{ $isListings ? __('Property lister sign in') : __('Promoter sign in') }}</a></div>
+            <div class="mt-8 flex flex-wrap gap-3">@if ($canSignUp)<a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="btn-primary btn-pill px-8 py-3">{{ __('Start free trial') }}</a>@endif<a href="{{ $isListings ? route('lister.login') : route('staff.login') }}" class="btn-light btn-pill px-8 py-3">{{ $isListings ? __('Property lister sign in') : __('Promoter sign in') }}</a></div>
         </div>
     </section>
     <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
@@ -50,7 +51,7 @@
                             @endforeach
                         @endif
                     </ul>
-                    <a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="{{ $loop->index === 1 ? 'btn-primary' : 'btn-light' }} btn-pill mt-6">{{ __('Start with :plan', ['plan' => __($p->name)]) }}</a>
+                    @if ($canSignUp)<a href="{{ $isListings ? route('lister.register') : route('signup') }}" class="{{ $loop->index === 1 ? 'btn-primary' : 'btn-light' }} btn-pill mt-6">{{ __('Start with :plan', ['plan' => __($p->name)]) }}</a>@endif
                 </div>
             @endforeach
         </div>

@@ -6,7 +6,7 @@
             <p class="mt-1 text-muted">{{ \App\Support\Format::num($plot->size_sqft) }} {{ __('sq ft') }} · {{ __(':facing facing', ['facing' => __($plot->facing)]) }}</p>
             <div class="mt-5">@include('partials.plot-price', ['plot' => $plot, 'size' => 'lg'])</div>
             @if ($plot->status !== 'available')
-                <div class="flash-err mt-6">{{ __('This plot is :status and cannot be booked.', ['status' => __($plot->statusLabel())]) }} <a href="{{ $plot->project->publicUrl() }}">{{ __('See other plots') }}</a>.</div>
+                <div class="flash-err mt-6">{{ __('This plot is :status and cannot be booked.', ['status' => __($plot->marketStatusLabel())]) }} <a href="{{ $plot->project->publicUrl() }}">{{ __('See other plots') }}</a>.</div>
             @else
                 <form method="POST" action="{{ route('account.book.store', $plot) }}" class="mt-6 space-y-4">
                     @csrf

@@ -1,7 +1,7 @@
 <x-layouts.workspace title="Quick launch layout">
     @include('partials.leaflet')
     <x-page-header title="Quick launch a layout" subtitle="Already have an approved layout? Publish it in one go — no estimate, Go/No-Go or stage tracking. Booking, sales, payments and registration work as usual." :back="route('ws.projects.index')">
-        <a href="{{ route('ws.launch.sample') }}" class="btn-light"><x-icon name="download" class="h-4 w-4" /> Sample plots CSV</a>
+        <a href="{{ route('ws.plot-onboarding.template') }}" class="btn-light"><x-icon name="download" class="h-4 w-4" /> Plot onboarding template (.xlsx)</a>
         <a href="{{ route('help.show', 'quick-launch') }}" class="btn-ghost" data-help><x-icon name="info" class="h-4 w-4" /> Help</a>
     </x-page-header>
 

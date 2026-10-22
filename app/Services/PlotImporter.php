@@ -29,9 +29,34 @@ class PlotImporter
         ['3', '1235/1', '1800', '60', '30', 'South-East', 'Plot 2', 'Plot 4', 'Plot 14', '30 ft road', '30', 'N', '1180', '', '', '', 'Blocked'],
     ];
 
+    /**
+     * Extra columns the plot onboarding template may carry. They help the promoter fill the sheet; only these
+     * two feed the import, and only when the main column is empty:
+     *  - plot_status (the owner's own words: Available, Reserved, Allocated…) → status: Available stays Available, anything else becomes Blocked
+     *  - size_cents → size_sqft (1 cent = 435.6 sq ft)
+     * Other extra columns (survey_number, rate_tier, plot_cost…) are ignored.
+     */
+    public const HELPER_COLUMNS = ['plot_status', 'size_cents'];
+
     /** @return array{rows: array<int, array>, errors: array<int, string>, header_error: ?string} */
     public static function fromTable(array $table): array
     {
+        if (! in_array('status', $table['headers'], true) && in_array('plot_status', $table['headers'], true)) {
+            $table['headers'][] = 'status';
+        }
+        if (! in_array('size_sqft', $table['headers'], true) && in_array('size_cents', $table['headers'], true)) {
+            $table['headers'][] = 'size_sqft';
+        }
+        foreach ($table['rows'] as &$r) {
+            if (trim((string) ($r['status'] ?? '')) === '' && trim((string) ($r['plot_status'] ?? '')) !== '') {
+                $r['status'] = strtolower(trim((string) $r['plot_status'])) === 'available' ? 'Available' : 'Blocked';
+            }
+            $cents = $r['size_cents'] ?? null;
+            if (trim((string) ($r['size_sqft'] ?? '')) === '' && is_numeric($cents) && (float) $cents > 0) {
+                $r['size_sqft'] = round((float) $cents * 435.6, 2);
+            }
+        }
+        unset($r);
         $missing = array_diff(array_keys(array_filter(self::COLUMNS, fn ($r) => $r === 'Yes')), $table['headers']);
         if ($missing) {
             return ['rows' => [], 'errors' => [], 'header_error' => 'The header row must use these exact names. Missing: '.implode(', ', $missing).'. Download the sample file.'];
@@ -41,7 +66,7 @@ class PlotImporter
             $row = ['_row' => $r['_row']];
             foreach (array_keys(self::COLUMNS) as $c) {
                 $v = $r[$c] ?? null;
-                $row[$c] = is_float($v) && floor($v) == $v ? (string) (int) $v : (is_null($v) ? '' : (string) $v);
+                $row[$c] = is_float($v) && floor($v) == $v ? (string) (int) $v : (is_null($v) ? '' : (is_bool($v) ? ($v ? 'Y' : 'N') : (string) $v));
             }
             $rows[] = $row;
         }
@@ -357,6 +382,6 @@ class PlotImporter
 
     public static function readUpload(string $path, string $ext): array
     {
-        return self::fromTable(Excel::read($path, $ext));
+        return self::fromTable(Excel::read($path, $ext, 'plot_no'));
     }
 }

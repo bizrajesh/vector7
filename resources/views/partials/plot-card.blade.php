@@ -1,12 +1,12 @@
 {{-- Marketplace plot card with tooltip data and filter data-attributes --}}
-<article class="plot-card reveal" data-card data-no="{{ $plot->plot_no }}" data-size="{{ (float) $plot->size_sqft }}" data-price="{{ $plot->currentPrice() }}" data-facing="{{ $plot->facing }}" data-corner="{{ $plot->is_corner ? 1 : 0 }}" data-offer="{{ $plot->offerIsActive() ? 1 : 0 }}" data-status="{{ $plot->status }}">
+<article class="plot-card reveal" data-card data-no="{{ $plot->plot_no }}" data-size="{{ (float) $plot->size_sqft }}" data-price="{{ $plot->currentPrice() }}" data-facing="{{ $plot->facing }}" data-corner="{{ $plot->is_corner ? 1 : 0 }}" data-offer="{{ $plot->offerIsActive() ? 1 : 0 }}" data-status="{{ $plot->marketStatus() }}">
     @if ($plot->offerIsActive())<span class="ribbon">{{ __('OFFER') }}</span>@endif
     <div class="flex items-start justify-between gap-2" data-plot='@json($plot->tooltipData())' tabindex="0" role="button" aria-label="{{ __('Plot :no details', ['no' => $plot->plot_no]) }}">
         <div>
             <p class="text-xs font-semibold text-muted">{{ __('Plot') }}</p>
             <p class="text-4xl font-extrabold leading-none tracking-tight text-navy">{{ $plot->plot_no }}</p>
         </div>
-        <x-status :status="$plot->status" />
+        <x-status :status="$plot->marketStatus()" />
     </div>
     <p class="mt-3 text-sm text-navy"><strong>{{ \App\Support\Format::num($plot->size_sqft) }}</strong> {{ __('sq ft') }} · {{ $plot->cents() }} {{ __('cents') }}</p>
     <p class="text-sm text-muted">{{ __(':facing facing', ['facing' => __($plot->facing)]) }} @if ($plot->dimensions())· {{ $plot->dimensions() }}@endif @if ($plot->is_corner)· {{ __('Corner') }} @endif</p>

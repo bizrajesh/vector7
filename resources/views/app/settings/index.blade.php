@@ -3,7 +3,7 @@
         <a href="{{ route('app.settings.templates') }}" class="btn-light"><x-icon name="mail" class="h-4 w-4" /> Email templates</a>
         <a href="{{ route('app.settings.ai-usage') }}" class="btn-light"><x-icon name="sparkles" class="h-4 w-4" /> AI usage log</a>
     </x-page-header>
-    @php($tabs = ['organisation' => 'Organisation', 'payment' => 'Payment gateway', 'smtp' => 'Email (SMTP)', 'ai' => 'AI (Claude)', 'storage' => 'Document storage', 'social' => 'Social accounts', 'security' => 'Security'])
+    @php($tabs = ['organisation' => 'Organisation', 'signups' => 'Sign-ups', 'payment' => 'Payment gateway', 'smtp' => 'Email (SMTP)', 'ai' => 'AI (Claude)', 'storage' => 'Document storage', 'social' => 'Social accounts', 'security' => 'Security'])
     <nav class="tabs mb-6">@foreach ($tabs as $k => $l)<a href="{{ route('app.settings.index', ['tab' => $k]) }}" class="tab {{ $tab === $k ? 'active' : '' }}">{{ $l }}</a>@endforeach</nav>
     @php($pw = '<div class="sm:col-span-2 lg:col-span-3 rounded-xl bg-page p-4"><label class="label" for="cp">Confirm with your password</label><input id="cp" type="password" name="current_password" class="input max-w-xs" required autocomplete="current-password">'.($errors->has('current_password') ? '<p class="error">'.e($errors->first('current_password')).'</p>' : '').'</div>')
 
@@ -20,6 +20,28 @@
             <x-field name="org__facebook" type="url" label="Facebook" :value="$s('org.facebook')" />
             <x-field name="org__youtube" type="url" label="YouTube" :value="$s('org.youtube')" />
             <x-field name="org__linkedin" type="url" label="LinkedIn" :value="$s('org.linkedin')" />
+            {!! $pw !!}
+            <div><button class="btn-primary">Save</button></div>
+        </form>
+    @elseif ($tab === 'signups')
+        <form method="POST" action="{{ route('app.settings.update', 'signups') }}" class="card card-pad space-y-4">
+            @csrf @method('PUT')
+            <div>
+                <h2 class="section-title">Who can create an account on the marketplace</h2>
+                <p class="mt-1 text-sm text-muted">Sign-in always works for existing accounts. When a sign-up is off, its page says "New accounts are not open yet" and the "Create account" links are hidden. The App team and promoters can still add users and buyers from their own screens.</p>
+            </div>
+            <ul class="divide-y divide-navy-50 rounded-xl ring-1 ring-navy-50">
+                @foreach ([
+                    'buyer' => ['Buyers', 'Create a free account to shortlist, book plots and see receipts.', route('register')],
+                    'lister' => ['Property listers', 'Owners and agents post individual properties.', route('lister.register')],
+                    'promoter' => ['Layout promoters', 'Create a promoter workspace (starts on the trial plan).', route('signup')],
+                ] as $k => [$label, $hint, $url])
+                    <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+                        <div><p class="font-semibold">{{ $label }}</p><p class="text-sm text-muted">{{ $hint }} <span class="font-mono text-xs">{{ parse_url($url, PHP_URL_PATH) }}</span></p></div>
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="signup__{{ $k }}" value="1" class="checkbox" @checked(\App\Support\Signups::open($k))> Sign-up open</label>
+                    </li>
+                @endforeach
+            </ul>
             {!! $pw !!}
             <div><button class="btn-primary">Save</button></div>
         </form>

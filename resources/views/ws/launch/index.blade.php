@@ -1,7 +1,8 @@
 <x-layouts.workspace title="Launch & plots">
     <x-page-header title="Launch & plots" subtitle="Publish projects to the marketplace and manage plots, prices and offers.">
         @can('quick_launch.create')<a href="{{ route('ws.quick-launch.create') }}" class="btn-primary"><x-icon name="rocket" class="h-4 w-4" /> Direct launch</a>@endcan
-        <a href="{{ route('ws.launch.sample') }}" class="btn-light"><x-icon name="download" class="h-4 w-4" /> Sample plot CSV</a>
+        @can('launch.create')<a href="{{ route('ws.plot-onboarding.index') }}" class="btn-light"><x-icon name="grid" class="h-4 w-4" /> Plot onboarding</a>@endcan
+        <a href="{{ route('ws.plot-onboarding.template') }}" class="btn-light"><x-icon name="download" class="h-4 w-4" /> Plot template (.xlsx)</a>
     </x-page-header>
     @can('quick_launch.create')
         <div class="card card-pad mb-8 flex flex-wrap items-center justify-between gap-4 ring-2 ring-teal-100">

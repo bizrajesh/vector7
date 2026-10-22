@@ -36,17 +36,22 @@ class Excel
     }
 
     /**
-     * Read the first sheet of a CSV/XLSX file as associative rows keyed by (lower-cased, trimmed) header.
+     * Read one sheet of a CSV/XLSX file as associative rows keyed by (lower-cased, trimmed) header.
+     * By default the first sheet; with $findColumn, the first sheet whose header row contains that column
+     * (so a workbook can keep guide or rate sheets in front of the data sheet).
      *
      * @return array{headers: array<int,string>, rows: array<int, array<string, mixed>>}
      */
-    public static function read(string $path, string $ext): array
+    public static function read(string $path, string $ext, ?string $findColumn = null): array
     {
         $reader = strtolower($ext) === 'csv' ? new CsvReader : new XlsxReader;
         $reader->open($path);
         $headers = null;
         $rows = [];
         foreach ($reader->getSheetIterator() as $sheet) {
+            if ($findColumn !== null && ! self::sheetHas($sheet, $findColumn)) {
+                continue;
+            }
             $n = 1;
             foreach ($sheet->getRowIterator() as $row) {
                 // Formula cells: use the value Excel / Google Sheets last calculated, not the formula text.
@@ -72,6 +77,17 @@ class Excel
         $reader->close();
 
         return ['headers' => $headers ?? [], 'rows' => $rows];
+    }
+
+    private static function sheetHas($sheet, string $column): bool
+    {
+        foreach ($sheet->getRowIterator() as $row) {
+            $cells = array_map(fn ($cell) => strtolower(trim((string) ($cell instanceof \OpenSpout\Common\Entity\Cell\FormulaCell ? $cell->getComputedValue() : $cell->getValue()))), $row->cells);
+
+            return in_array(strtolower($column), $cells, true);
+        }
+
+        return false;
     }
 
     /** Parse pasted CSV text. */

@@ -1,9 +1,11 @@
 {{--
     Interactive plot map. Plots are drawn over the layout picture (DXF outlines or pins placed in Launch),
     coloured by status; every shape/tile shows the plot tooltip on hover, focus or tap.
-    Vars: $project, $plots, $layoutUrl (image URL or null)
+    Vars: $project, $plots, $layoutUrl (image URL or null), $internal (workspace: real statuses; marketplace: Available / Booked / Blocked)
 --}}
 @php
+    $internal = $internal ?? false;
+    $statusNames = $internal ? \App\Models\Plot::STATUSES : \App\Models\Plot::MARKET_STATUSES;
     $W = (int) ($project->layout_width ?: 1000);
     $H = (int) ($project->layout_height ?: 700);
     $positioned = $plots->filter(fn ($p) => $p->map_polygon || $p->map_x !== null);
@@ -16,8 +18,8 @@
             @if ($positioned->isNotEmpty())
                 <svg class="absolute inset-0 h-full w-full" viewBox="0 0 {{ $W }} {{ $H }}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="{{ __('Plots on the layout') }}">
                     @foreach ($positioned as $p)
-                        @php($c = $p->color())
-                        <g class="plot-shape" data-plot='@json($p->tooltipData($internal ?? false))' tabindex="0" role="button" aria-label="{{ __('Plot :no', ['no' => $p->plot_no]) }}, {{ __($p->statusLabel()) }}, {{ \App\Support\Format::num($p->size_sqft) }} {{ __('sq ft') }}, {{ \App\Support\Format::inr($p->currentPrice()) }}">
+                        @php($c = \App\Models\Plot::COLORS[$p->shownStatus($internal)] ?? '#64748B')
+                        <g class="plot-shape" data-plot='@json($p->tooltipData($internal))' tabindex="0" role="button" aria-label="{{ __('Plot :no', ['no' => $p->plot_no]) }}, {{ __($statusNames[$p->shownStatus($internal)] ?? $p->status) }}, {{ \App\Support\Format::num($p->size_sqft) }} {{ __('sq ft') }}, {{ \App\Support\Format::inr($p->currentPrice()) }}">
                             @if ($p->map_polygon)
                                 <polygon points="{{ collect($p->map_polygon)->map(fn ($pt) => round($pt[0] / 100 * $W, 1).','.round($pt[1] / 100 * $H, 1))->implode(' ') }}" fill="{{ $c }}" fill-opacity="0.45" stroke="{{ $c }}" stroke-width="2" />
                             @else
@@ -40,16 +42,16 @@
         {{-- Schematic map: every plot as a tile, coloured by status --}}
         <div class="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-10 lg:grid-cols-12" role="group" aria-label="{{ __('Plot map') }}">
             @foreach ($plots as $p)
-                <div class="plot-shape flex aspect-square items-center justify-center rounded-md text-xs font-bold text-white ring-1 ring-white/40 focus:outline-none focus:ring-2 focus:ring-navy {{ ['available' => 'bg-teal-700', 'booked' => 'bg-amber-600', 'sale_init' => 'bg-blue-600', 'ror' => 'bg-violet-600', 'ror_init' => 'bg-purple-600', 'ror_completed' => 'bg-indigo-700', 'sold' => 'bg-slate-600', 'blocked' => 'bg-red-600'][$p->status] ?? 'bg-slate-500' }}"
-                     data-plot='@json($p->tooltipData($internal ?? false))' tabindex="0" role="button" aria-label="{{ __('Plot :no', ['no' => $p->plot_no]) }}, {{ __($p->statusLabel()) }}">{{ $p->plot_no }}</div>
+                <div class="plot-shape flex aspect-square items-center justify-center rounded-md text-xs font-bold text-white ring-1 ring-white/40 focus:outline-none focus:ring-2 focus:ring-navy {{ ['available' => 'bg-teal-700', 'booked' => 'bg-amber-600', 'sale_init' => 'bg-blue-600', 'ror' => 'bg-violet-600', 'ror_init' => 'bg-purple-600', 'ror_completed' => 'bg-indigo-700', 'sold' => 'bg-slate-600', 'blocked' => 'bg-red-600'][$p->shownStatus($internal)] ?? 'bg-slate-500' }}"
+                     data-plot='@json($p->tooltipData($internal))' tabindex="0" role="button" aria-label="{{ __('Plot :no', ['no' => $p->plot_no]) }}, {{ __($statusNames[$p->shownStatus($internal)] ?? $p->status) }}">{{ $p->plot_no }}</div>
             @endforeach
         </div>
     @endif
 
     <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label="{{ __('Legend') }}">
-        @foreach (\App\Models\Plot::STATUSES as $k => $l)
-            @if ($plots->contains('status', $k))
-                <li class="flex items-center gap-1.5"><svg class="h-3 w-3" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="{{ \App\Models\Plot::COLORS[$k] }}" /></svg>{{ $l }}</li>
+        @foreach ($statusNames as $k => $l)
+            @if ($plots->contains(fn ($p) => $p->shownStatus($internal) === $k))
+                <li class="flex items-center gap-1.5"><svg class="h-3 w-3" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="{{ \App\Models\Plot::COLORS[$k] }}" /></svg>{{ __($l) }}</li>
             @endif
         @endforeach
     </ul>

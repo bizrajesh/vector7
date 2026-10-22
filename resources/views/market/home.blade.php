@@ -59,7 +59,7 @@
                                         @elseif ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
                                             <img src="{{ $p->layoutUrl() }}" alt="{{ __('Layout plan of :name', ['name' => $p->name]) }}" class="aspect-[4/3] w-full object-cover" width="{{ $p->layout_width ?: 800 }}" height="{{ $p->layout_height ?: 600 }}" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif>
                                         @else
-                                            <div class="grid aspect-[4/3] grid-cols-8 gap-1 p-4">@foreach ($p->plots->take(48) as $pl)<span class="rounded-sm {{ $pl->status === 'available' ? 'bg-teal-600' : ($pl->status === 'blocked' ? 'bg-red-300' : 'bg-navy-100') }}"></span>@endforeach</div>
+                                            <div class="grid aspect-[4/3] grid-cols-8 gap-1 p-4">@foreach ($p->plots->take(48) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
                                         @endif
                                     </a>
                                     <div class="mt-4 flex flex-wrap items-end justify-between gap-3 px-1">
@@ -212,7 +212,11 @@
                 <p class="mt-3 text-navy-100">{{ __('Post plots, flats, villas, houses, farm land or shops with photos and a map pin. Every call, WhatsApp and enquiry lands in your Leads. Start on a free trial.') }}</p>
             </div>
             <div class="flex flex-wrap gap-3">
+                @if (\App\Support\Signups::open('promoter'))
                 <a href="{{ route('signup') }}" class="btn btn-pill bg-gold px-7 py-3 text-navy hover:bg-amber-300 hover:text-navy">{{ __('Create a workspace') }}</a>
+                @else
+                <a href="{{ route('staff.login') }}" class="btn btn-pill bg-gold px-7 py-3 text-navy hover:bg-amber-300 hover:text-navy">{{ __('Promoter sign in') }}</a>
+                @endif
                 <a href="{{ route('market.pricing') }}" class="btn btn-pill px-7 py-3 text-white ring-1 ring-white/30 hover:bg-white/10 hover:text-white">{{ __('See plans') }}</a>
             </div>
         </div>

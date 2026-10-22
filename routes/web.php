@@ -56,8 +56,8 @@ Route::post('/webhooks/payment/{gateway}', [WebhookController::class, 'payment']
 Route::middleware('guest:customer')->group(function () {
     Route::get('/login', [Auth\CustomerAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [Auth\CustomerAuthController::class, 'login'])->middleware('throttle:login')->name('customer.login');
-    Route::get('/register', [Auth\CustomerAuthController::class, 'showRegister'])->middleware('signup')->name('register');
-    Route::post('/register', [Auth\CustomerAuthController::class, 'register'])->middleware(['signup', 'throttle:register'])->name('customer.register');
+    Route::get('/register', [Auth\CustomerAuthController::class, 'showRegister'])->middleware('signup:buyer')->name('register');
+    Route::post('/register', [Auth\CustomerAuthController::class, 'register'])->middleware(['signup:buyer', 'throttle:register'])->name('customer.register');
     Route::get('/forgot-password', [Auth\CustomerAuthController::class, 'showForgot'])->name('customer.password.request');
     Route::post('/forgot-password', [Auth\CustomerAuthController::class, 'sendReset'])->middleware('throttle:forgot')->name('customer.password.email');
     Route::get('/reset-password/{token}', [Auth\CustomerAuthController::class, 'showReset'])->name('customer.password.reset');
@@ -121,8 +121,8 @@ Route::post('/preview-login', [Auth\PreviewGateController::class, 'login'])->mid
 
 // Property listers (independent owners / agents) sign up and sign in from the marketplace
 Route::middleware('guest:web')->prefix('list-property')->group(function () {
-    Route::get('/', [Auth\ListerAuthController::class, 'showRegister'])->middleware('signup')->name('lister.register');
-    Route::post('/', [Auth\ListerAuthController::class, 'register'])->middleware(['signup', 'throttle:register'])->name('lister.register.store');
+    Route::get('/', [Auth\ListerAuthController::class, 'showRegister'])->middleware('signup:lister')->name('lister.register');
+    Route::post('/', [Auth\ListerAuthController::class, 'register'])->middleware(['signup:lister', 'throttle:register'])->name('lister.register.store');
     Route::get('/login', [Auth\ListerAuthController::class, 'showLogin'])->name('lister.login');
     Route::post('/login', [Auth\ListerAuthController::class, 'login'])->middleware('throttle:login')->name('lister.login.post');
 });
@@ -130,8 +130,8 @@ Route::prefix('workspace')->group(function () {
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', [Auth\StaffAuthController::class, 'showLogin'])->name('staff.login');
         Route::post('/login', [Auth\StaffAuthController::class, 'login'])->middleware('throttle:login')->name('staff.login.post');
-        Route::get('/create', [Auth\SignupController::class, 'show'])->middleware('signup')->name('signup');
-        Route::post('/create', [Auth\SignupController::class, 'store'])->middleware(['signup', 'throttle:register'])->name('signup.store');
+        Route::get('/create', [Auth\SignupController::class, 'show'])->middleware('signup:promoter')->name('signup');
+        Route::post('/create', [Auth\SignupController::class, 'store'])->middleware(['signup:promoter', 'throttle:register'])->name('signup.store');
         Route::get('/forgot-password', [Auth\StaffAuthController::class, 'showForgot'])->name('password.request');
         Route::post('/forgot-password', [Auth\StaffAuthController::class, 'sendReset'])->middleware('throttle:forgot')->name('password.email');
         Route::get('/reset-password/{token}', [Auth\StaffAuthController::class, 'showReset'])->name('password.reset');
@@ -249,6 +249,9 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'tenant'])->prefix('work
     Route::middleware('module:launch')->group(function () {
         Route::get('/launch', [Tenant\LaunchController::class, 'index'])->middleware('perm:launch.view')->name('launch.index');
         Route::get('/launch/sample.csv', [Tenant\LaunchController::class, 'sample'])->middleware('perm:launch.view')->name('launch.sample');
+        Route::get('/plot-onboarding', [Tenant\PlotOnboardingController::class, 'index'])->middleware('perm:launch.create')->name('plot-onboarding.index');
+        Route::get('/plot-onboarding/template.xlsx', [Tenant\PlotOnboardingController::class, 'template'])->middleware('perm:launch.view')->name('plot-onboarding.template');
+        Route::post('/plot-onboarding', [Tenant\PlotOnboardingController::class, 'upload'])->middleware('perm:launch.create')->name('plot-onboarding.upload');
         Route::get('/launch/{project}', [Tenant\LaunchController::class, 'show'])->middleware('perm:launch.view')->name('launch.show');
         Route::post('/launch/{project}/layout', [Tenant\LaunchController::class, 'layout'])->middleware('perm:launch.update')->name('launch.layout');
         Route::post('/launch/{project}/details', [Tenant\LaunchController::class, 'details'])->middleware('perm:launch.update')->name('launch.details');
@@ -500,7 +503,7 @@ Route::middleware(['auth:web', 'auth.session', 'staff', 'appuser'])->prefix('app
     Route::put('/seo/meta/{meta}', [App\SeoController::class, 'meta'])->middleware('perm:seo.update')->name('seo.meta');
 
     Route::get('/settings', [App\SettingsController::class, 'index'])->middleware('perm:app_settings.view')->name('settings.index');
-    Route::put('/settings/{section}', [App\SettingsController::class, 'update'])->middleware('perm:app_settings.update')->name('settings.update')->where('section', 'organisation|payment|smtp|ai|storage|social|security');
+    Route::put('/settings/{section}', [App\SettingsController::class, 'update'])->middleware('perm:app_settings.update')->name('settings.update')->where('section', 'organisation|signups|payment|smtp|ai|storage|social|security');
     Route::post('/settings/test-email', [App\SettingsController::class, 'testEmail'])->middleware('perm:app_settings.update')->name('settings.test-email');
     Route::post('/settings/test-storage', [App\SettingsController::class, 'testStorage'])->middleware('perm:app_settings.update')->name('settings.test-storage');
     Route::get('/settings/templates', [App\SettingsController::class, 'templates'])->middleware('perm:app_settings.view')->name('settings.templates');

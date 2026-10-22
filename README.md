@@ -25,7 +25,7 @@ This guide is written for a non-developer. Follow the steps in order.
 12. [Marketplace in Tamil and English, menus and the App sign-in](#12-marketplace-in-tamil-and-english-menus-and-the-app-sign-in)
 13. [Plans, top-ups and contact view charges](#13-plans-top-ups-and-contact-view-charges)
 14. [Direct launch, Property Listers and App Support](#14-direct-launch-property-listers-and-app-support)
-15. [Testing on the live server: preview sign-in and closed sign-ups](#15-testing-on-the-live-server-preview-sign-in-and-closed-sign-ups)
+15. [Production: sign-ups, plot statuses, plot onboarding and clean-up](#15-production-sign-ups-plot-statuses-plot-onboarding-and-clean-up)
 
 ---
 
@@ -624,20 +624,46 @@ Passwords are never stored.
 
 ---
 
-## 15. Testing on the live server: preview sign-in and closed sign-ups
+## 15. Production: sign-ups, plot statuses, plot onboarding and clean-up
 
-While the site is being tested on the live host, three switches in `.env` keep it private:
+### 15.1 Marketplace sign-ups (App Admin switch)
 
-| `.env` line | What it does |
-|---|---|
-| `PREVIEW_GATE=true` | Every page first asks for one shared email and password (`/preview-login`). After that, the tester's browser stays signed in for `PREVIEW_GATE_REMEMBER_DAYS` (default 30). Payment webhooks and `/up` stay open. Pages carry `noindex`. |
-| `PREVIEW_GATE_EMAIL=...` / `PREVIEW_GATE_PASSWORD_HASH='...'` | The shared sign-in. Only the **hash** of the password is stored. Make it with `php artisan v7:gate-hash` and keep the single quotes. Changing the hash signs every tester out. |
-| `REGISTRATION_OPEN=false` | Nobody can create buyer, property lister or promoter accounts from the website. The sign-up pages say "New accounts are not open yet", and the "Create account" links are hidden. Existing accounts still sign in, and the App team and promoters can still add users. |
-| `SEO_INDEXABLE=false` | `robots.txt` blocks everything and pages are `noindex`. |
+Sign-in is always on the marketplace (buyers, property listers, promoters). **Sign-up** for each of the three is switched on by the App Admin in **App → Settings → Sign-ups**. On a new install all three are off: the sign-up pages say "New accounts are not open yet" and every "Create account / Start free trial / Create a workspace" link is hidden. The App team and promoters can still add users and buyers from their own screens.
 
-Preview sign-in attempts are listed in App → **Security → Sign-in activity** (page "Preview gate").
+### 15.2 Plot status on the marketplace
 
-**Going public later:** set `PREVIEW_GATE=false`, `REGISTRATION_OPEN=true` and `SEO_INDEXABLE=true`. Then run `php artisan config:cache` and `php artisan seo:build`. The marketplace home page becomes the landing page again; no code change is needed.
+Buyers see only **Available**, **Booked** or **Blocked**. Every other stage (Sale Init, ROR-Init, ROR, ROR-Completed, Sold, Blocked) shows as **Blocked**, and those plots stay on the layout map instead of disappearing. The workspace keeps the real status.
 
-**Patta and survey numbers** are never shown on the marketplace: not on the listing, layout or plot pages, plot map tooltips, booking page or search-engine data. Promoters still see them in their workspace.
+### 15.3 Plot onboarding
 
+Workspace → **Projects → Plot onboarding**: download `vector7-plot-onboarding-template.xlsx` (Plots sheet + How to fill sheet, with drop-down lists), fill one row per plot, choose the project and upload. The same template works in **Launch & plots → Load plots** and in **Direct launch**.
+
+- The sheet whose header row has `plot_no` is read, so guide or rate sheets may sit in front of it. Formula cells are read by their calculated value.
+- Optional helper columns: `plot_status` (used when `status` is empty — Available stays Available, Reserved / Allocated / anything else becomes Blocked) and `size_cents` (used when `size_sqft` is empty; 1 cent = 435.6 sq ft). Other extra columns are ignored.
+- Every row is checked and shown before anything is saved. Uploading again updates plots with the same `plot_no`.
+
+### 15.4 Removing test data before go-live
+
+`database/sql/production-cleanup.sql` deletes every workspace, buyer, project, plot, booking, listing, lead, log and upload record, and keeps only the **App Admin login** and the **prerequisites** (App masters, App roles, permissions, plans and limits, top-up packs, services, SRO list, email templates, App settings). Steps:
+
+```
+php artisan down
+mysqldump -u USER -p DATABASE > before-cleanup.sql
+mysql -u USER -p DATABASE < database/sql/production-cleanup.sql
+# delete the files inside storage/app/private/tenants, storage/app/private/receipts,
+# storage/app/private/backups and storage/app/public (keep the folders)
+php artisan optimize:clear && php artisan optimize && php artisan seo:build && php artisan up
+```
+
+(Or use phpMyAdmin → Export for the backup and Import for the script.) The last line of the script prints a check: 1 App Admin user, 0 workspaces, 0 buyers, 0 projects, 0 listings.
+
+### 15.5 Production `.env`
+
+```
+APP_ENV=production
+APP_DEBUG=false
+PREVIEW_GATE=false
+SEO_INDEXABLE=true
+```
+
+then `php artisan config:cache`. The preview sign-in page (`PREVIEW_GATE=true`) is still available for a future private test copy. **Patta and survey numbers** are never shown on the marketplace; promoters see them in their workspace.

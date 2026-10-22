@@ -56,9 +56,43 @@ class PreviewGateAndSignupsTest extends TestCase
         $this->get(route('preview.login'))->assertRedirect(route('home'));
     }
 
+    public function test_sign_ups_are_closed_on_a_new_install(): void
+    {
+        \App\Models\Setting::where('key', 'like', 'signup.%')->delete();
+        \Illuminate\Support\Facades\Cache::forget('app_settings');
+        foreach (array_keys(\App\Support\Signups::KINDS) as $k) {
+            $this->assertFalse(\App\Support\Signups::open($k));
+        }
+        $this->get(route('register'))->assertForbidden();
+        $this->get(route('lister.register'))->assertForbidden();
+        $this->get(route('signup'))->assertForbidden();
+        // Sign-in stays available on the marketplace.
+        $this->get('/')->assertOk()->assertSee(route('login'), false)->assertSee(route('lister.login'), false)->assertSee(route('staff.login'), false);
+        $this->get(route('market.pricing'))->assertOk()->assertDontSee('href="'.route('signup').'"', false);
+    }
+
+    public function test_app_admin_opens_each_sign_up_separately(): void
+    {
+        $this->setSignups(false);
+        $admin = $this->appAdmin();
+        $admin->forceFill(['password' => Hash::make('Secret@123')])->save();
+        $admin = $admin->fresh();
+        $this->actingAs($admin)->get(route('app.settings.index', ['tab' => 'signups']))->assertOk()->assertSee('Who can create an account on the marketplace');
+        $this->actingAs($admin)->put(route('app.settings.update', 'signups'), ['signup__buyer' => '1', 'current_password' => 'Secret@123'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertTrue(\App\Support\Signups::open('buyer'));
+        $this->assertFalse(\App\Support\Signups::open('lister'));
+        $this->assertFalse(\App\Support\Signups::open('promoter'));
+        auth('web')->logout();
+        $this->get(route('register'))->assertOk();
+        $this->get(route('lister.register'))->assertForbidden();
+        $this->get(route('signup'))->assertForbidden();
+        $this->get(route('login'))->assertOk()->assertSee('Create a free account');
+        $this->get(route('lister.login'))->assertOk()->assertDontSee('Create a lister account');
+    }
+
     public function test_sign_ups_can_be_closed(): void
     {
-        config(['vector7.registration_open' => false]);
+        $this->setSignups(false);
         foreach (['register', 'lister.register', 'signup'] as $r) {
             $this->get(route($r))->assertForbidden()->assertSee('New accounts are not open yet');
         }

@@ -12,5 +12,5 @@
         </div>
         <button class="btn-primary w-full btn-pill py-3">{{ __('Sign in') }}</button>
     </form>
-    <x-slot:below>@if (config('vector7.registration_open')){{ __('New lister?') }} <a href="{{ route('lister.register') }}" class="font-semibold">{{ __('Create a lister account') }}</a> · @endif{{ __('Buying?') }} <a href="{{ route('login') }}" class="font-semibold">{{ __('Buyer sign in') }}</a></x-slot:below>
+    <x-slot:below>@if (\App\Support\Signups::open('lister')){{ __('New lister?') }} <a href="{{ route('lister.register') }}" class="font-semibold">{{ __('Create a lister account') }}</a> · @endif{{ __('Buying?') }} <a href="{{ route('login') }}" class="font-semibold">{{ __('Buyer sign in') }}</a></x-slot:below>
 </x-layouts.auth>

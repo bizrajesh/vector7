@@ -23,5 +23,5 @@
         <x-checkbox name="terms" :label="__('I agree to the Terms and the Privacy Policy')" required />
         <button class="btn-primary w-full btn-pill py-3">{{ __('Create lister account') }}</button>
     </form>
-    <x-slot:below>{{ __('Already listing with us?') }} <a href="{{ route('lister.login') }}" class="font-semibold">{{ __('Sign in') }}</a> · {{ __('Layout promoter?') }} <a href="{{ route('signup') }}" class="font-semibold">{{ __('Create a promoter workspace') }}</a></x-slot:below>
+    <x-slot:below>{{ __('Already listing with us?') }} <a href="{{ route('lister.login') }}" class="font-semibold">{{ __('Sign in') }}</a> @if (\App\Support\Signups::open('promoter'))· {{ __('Layout promoter?') }} <a href="{{ route('signup') }}" class="font-semibold">{{ __('Create a promoter workspace') }}</a>@endif</x-slot:below>
 </x-layouts.auth>

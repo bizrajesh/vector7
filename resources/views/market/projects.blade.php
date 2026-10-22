@@ -27,7 +27,7 @@
                         @if ($p->layoutFile && str_starts_with($p->layoutFile->mime, 'image/'))
                             <img src="{{ $p->layoutUrl() }}" alt="{{ __('Layout plan of :name', ['name' => $p->name]) }}" class="aspect-[16/10] w-full object-cover" width="{{ $p->layout_width ?: 800 }}" height="{{ $p->layout_height ?: 500 }}" loading="lazy" decoding="async">
                         @else
-                            <div class="grid aspect-[16/10] grid-cols-10 gap-1 p-4" aria-hidden="true">@foreach ($p->plots->take(60) as $pl)<span class="rounded-sm {{ $pl->status === 'available' ? 'bg-teal-600' : 'bg-navy-100' }}"></span>@endforeach</div>
+                            <div class="grid aspect-[16/10] grid-cols-10 gap-1 p-4" aria-hidden="true">@foreach ($p->plots->take(60) as $pl)<span class="rounded-sm {{ ['available' => 'bg-teal-600', 'booked' => 'bg-amber-400', 'blocked' => 'bg-red-300'][$pl->marketStatus()] }}"></span>@endforeach</div>
                         @endif
                     </a>
                     <div class="p-5">
@@ -35,7 +35,7 @@
                         <p class="text-sm text-muted">{{ $p->location }}, {{ $p->district }} · {{ __(':type approved', ['type' => __($p->approval_type)]) }}</p>
                         <div class="mt-4 flex items-end justify-between">
                             <div><p class="text-xs text-muted">{{ __('Plots from') }}</p><p class="text-2xl font-extrabold text-teal-700">{{ $avail->isNotEmpty() ? \App\Support\Format::inrShort($p->minPrice()) : '—' }}</p></div>
-                            <div class="text-right text-sm"><p class="font-bold">{{ __(':n of :total', ['n' => $avail->count(), 'total' => $p->plots->where('status', '!=', 'sold')->count()]) }}</p><p class="text-muted">{{ __('available') }}</p></div>
+                            <div class="text-right text-sm"><p class="font-bold">{{ __(':n of :total', ['n' => $avail->count(), 'total' => $p->plots->count()]) }}</p><p class="text-muted">{{ __('available') }}</p></div>
                         </div>
                         @if ($avail->filter->offerIsActive()->isNotEmpty())<p class="mt-3 inline-flex rounded-md bg-gold px-2 py-0.5 text-xs font-extrabold text-navy">{{ __('Offers running') }}</p>@endif
                     </div>

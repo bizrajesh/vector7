@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
-/** Public project & plot pages. Only launched projects; sold plots leave the showcase. */
+/** Public project & plot pages. Only launched projects. Buyers see three statuses: Available, Booked, Blocked (every other stage, Sold included, shows as Blocked). */
 class ProjectController extends Controller
 {
     public function index(Request $request)
@@ -53,7 +53,7 @@ class ProjectController extends Controller
         if ($location !== $project->locationSlug()) {
             return redirect($project->publicUrl(), 301);
         }
-        $project->load(['plots' => fn ($q) => $q->where('status', '!=', 'sold')->orderByRaw('CAST(plot_no AS UNSIGNED), plot_no'), 'layoutFile', 'tenantRel', 'stages', 'estimate',
+        $project->load(['plots' => fn ($q) => $q->orderByRaw('CAST(plot_no AS UNSIGNED), plot_no'), 'layoutFile', 'tenantRel', 'stages', 'estimate',
             'images', 'featureRows.master', 'contactBlock', 'brochure']);
         $project->plots->each->setRelation('project', $project);
         $d = SeoService::projectDefaults($project);
@@ -88,9 +88,6 @@ class ProjectController extends Controller
         }
         $plot = $project->plots()->whereRaw('LOWER(plot_no) = ?', [$plotNo])->firstOrFail();
         $plot->setRelation('project', $project);
-        if ($plot->status === 'sold') {
-            return redirect($project->publicUrl(), 301);
-        }
         $d = SeoService::plotDefaults($plot);
 
         return view('market.plot', [

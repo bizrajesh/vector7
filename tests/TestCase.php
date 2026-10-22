@@ -39,6 +39,16 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->withoutVite();
         app(Tenancy::class)->set(null);
+        // A new install has every marketplace sign-up closed (App Admin opens them). Most tests exercise
+        // the sign-up flows, so open them here; SignupSwitchesTest covers the closed default.
+        $this->setSignups(true);
+    }
+
+    protected function setSignups(bool $open, ?array $kinds = null): void
+    {
+        foreach ($kinds ?? array_keys(\App\Support\Signups::KINDS) as $k) {
+            \App\Services\AppSettings::set('signup.'.$k, $open ? '1' : '0');
+        }
     }
 
     protected function tearDown(): void

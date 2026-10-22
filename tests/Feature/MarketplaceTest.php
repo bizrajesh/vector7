@@ -47,9 +47,9 @@ class MarketplaceTest extends TestCase
         $plot = Plot::withoutGlobalScopes()->where('project_id', $p->id)->where('plot_no', '1')->first();
         $this->get($plot->publicUrl())->assertOk()->assertSee('Plot 1')->assertSee('"@type":"Product"', false)->assertSee('Book this plot');
         $this->get(route('market.layout', $p->slug))->assertOk()->assertHeader('Cache-Control');
-        // sold plots leave the showcase and redirect
+        // sold plots stay on the marketplace, shown as Blocked (buyers see only Available / Booked / Blocked)
         $plot->update(['status' => 'sold']);
-        $this->get($plot->publicUrl())->assertStatus(301);
+        $this->get($plot->publicUrl())->assertOk()->assertSee('This plot is Blocked')->assertDontSee('Book this plot');
     }
 
     public function test_unlaunched_projects_are_hidden(): void

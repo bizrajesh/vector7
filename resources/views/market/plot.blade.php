@@ -5,7 +5,7 @@
             <div class="lg:col-span-3">
                 <div class="flex flex-wrap items-start gap-4">
                     <h1 class="text-5xl font-extrabold tracking-tight sm:text-6xl">{{ __('Plot :no', ['no' => $plot->plot_no]) }}</h1>
-                    <x-status :status="$plot->status" class="mt-3" />
+                    <x-status :status="$plot->marketStatus()" class="mt-3" />
                     @if ($plot->offerIsActive())<span class="mt-3 rounded-md bg-gold px-2 py-0.5 text-xs font-extrabold text-navy">{{ __('OFFER') }}</span>@endif
                 </div>
                 <p class="mt-2 text-lg text-muted">{{ $project->name }} · {{ $project->location }}, {{ $project->district }}</p>
@@ -30,7 +30,7 @@
                 </div>
                 @if ($project->layoutUrl())
                     <h2 class="mt-10 text-lg font-extrabold">{{ __('Where it is in the layout') }}</h2>
-                    <div class="mt-3">@include('partials.plot-map', ['plots' => $project->plots()->where('status', '!=', 'sold')->get()->each->setRelation('project', $project), 'layoutUrl' => $project->layoutUrl()])</div>
+                    <div class="mt-3">@include('partials.plot-map', ['plots' => $project->plots()->orderByRaw('CAST(plot_no AS UNSIGNED), plot_no')->get()->each->setRelation('project', $project), 'layoutUrl' => $project->layoutUrl()])</div>
                 @endif
             </div>
             <aside class="lg:col-span-2">
@@ -40,7 +40,7 @@
                         <a href="{{ route('account.book', $plot) }}" class="btn-primary btn-pill mt-6 w-full py-3.5 text-base">{{ __('Book this plot') }}</a>
                         <p class="mt-2 text-center text-xs text-muted">{{ __('Booking is free. You pay the promoter directly in instalments.') }}</p>
                     @else
-                        <p class="mt-6 rounded-xl bg-page p-4 text-sm">{{ __('This plot is :status.', ['status' => __($plot->statusLabel())]) }} <a href="{{ $project->publicUrl() }}">{{ __('See available plots') }}</a>.</p>
+                        <p class="mt-6 rounded-xl bg-page p-4 text-sm">{{ __('This plot is :status.', ['status' => __($plot->marketStatusLabel())]) }} <a href="{{ $project->publicUrl() }}">{{ __('See available plots') }}</a>.</p>
                     @endif
                     @if (! empty($project->facilities))
                         <p class="mt-6 text-sm font-bold">{{ __('Facilities') }}</p>

@@ -27,7 +27,7 @@
                             @if ($c === 'facing')
                                 <select class="input min-w-[7.5rem] py-1 text-xs" data-col="facing" aria-label="Row {{ $line }} facing"><option value=""></option>@foreach (\App\Models\Plot::FACINGS as $f)<option @selected(strcasecmp($r['facing'] ?? '', $f) === 0)>{{ $f }}</option>@endforeach</select>
                             @elseif ($c === 'status')
-                                <select class="input py-1 text-xs" data-col="status" aria-label="Row {{ $line }} status">@foreach (['Available', 'Blocked'] as $s)<option @selected(strcasecmp($r['status'] ?? '', $s) === 0)>{{ $s }}</option>@endforeach</select>
+                                <select class="input py-1 text-xs" data-col="status" aria-label="Row {{ $line }} status">@if (! in_array(strtolower($r['status'] ?? ''), ['available', 'blocked'], true))<option value="{{ $r['status'] ?? '' }}" selected>{{ ($r['status'] ?? '') !== '' ? $r['status'].' (fix)' : 'Choose' }}</option>@endif @foreach (['Available', 'Blocked'] as $s)<option @selected(strcasecmp($r['status'] ?? '', $s) === 0)>{{ $s }}</option>@endforeach</select>
                             @elseif ($c === 'corner_plot')
                                 <select class="input py-1 text-xs" data-col="corner_plot" aria-label="Row {{ $line }} corner">@foreach (['N', 'Y'] as $s)<option @selected(strtoupper(substr($r['corner_plot'] ?? 'N', 0, 1)) === $s)>{{ $s }}</option>@endforeach</select>
                             @else

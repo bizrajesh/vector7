@@ -13,9 +13,6 @@ return [
         'remember_days' => (int) env('PREVIEW_GATE_REMEMBER_DAYS', 30),
     ],
 
-    /*
-    | Self sign-up for buyers, property listers and layout promoters. false = nobody can create an account
-    | from the website (existing accounts still sign in; the App team and promoters can still add users).
-    */
-    'registration_open' => (bool) env('REGISTRATION_OPEN', true),
+    // Self sign-up for buyers, property listers and layout promoters is switched on by the App Admin
+    // (App → Settings → Sign-ups), not in .env. See App\Support\Signups.
 ];

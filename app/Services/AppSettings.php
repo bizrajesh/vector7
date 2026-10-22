@@ -52,6 +52,10 @@ class AppSettings
         'payment.test_mode' => '1',
         'storage.driver' => 'local',
         'security.two_factor' => '0',
+        // Marketplace sign-ups: closed until the App Admin opens them (App → Settings → Sign-ups).
+        'signup.buyer' => '0',
+        'signup.lister' => '0',
+        'signup.promoter' => '0',
         'seo.ai_crawlers' => 'allow',
         'seo.default_title' => 'vector7 — Approved residential plots from trusted promoters',
         'seo.default_description' => 'Browse DTCP and panchayat approved residential plot layouts, see live plot availability, offers and book online with vector7.',

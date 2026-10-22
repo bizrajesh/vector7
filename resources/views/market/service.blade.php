@@ -13,7 +13,7 @@
             @elseif ($service->available_to === 'tenant')
                 <p>{{ __('This service is for promoters.') }} <a href="{{ route('staff.login') }}">{{ __('Sign in to your workspace') }}</a> {{ __('and request it from Help desk.') }}</p>
             @else
-                <p><a href="{{ route('login') }}" class="font-semibold">{{ __('Sign in') }}</a> {{ __('or') }} <a href="{{ route('register') }}" class="font-semibold">{{ __('create a free account') }}</a> {{ __('to request this service.') }}</p>
+                <p><a href="{{ route('login') }}" class="font-semibold">{{ __('Sign in') }}</a>@if (\App\Support\Signups::open('buyer')) {{ __('or') }} <a href="{{ route('register') }}" class="font-semibold">{{ __('create a free account') }}</a>@endif {{ __('to request this service.') }}</p>
             @endif
         </div>
     </div>

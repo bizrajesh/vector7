@@ -13,7 +13,7 @@ use App\Services\Notify;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-/** App Admin settings: organisation, payment gateway, SMTP, AI, storage driver, social accounts, security. */
+/** App Admin settings: organisation, marketplace sign-ups, payment gateway, SMTP, AI, storage driver, social accounts, security. */
 class SettingsController extends Controller
 {
     public function index(Request $request)
@@ -50,6 +50,7 @@ class SettingsController extends Controller
                 'storage.gcs_bucket' => 'nullable|string|max:100', 'storage.gcs_credentials' => 'nullable|string|max:10000',
                 'storage.azure_account' => 'nullable|string|max:100', 'storage.azure_key' => 'nullable|string|max:200', 'storage.azure_container' => 'nullable|string|max:100',
                 'storage.gdrive_folder_id' => 'nullable|string|max:150', 'storage.gdrive_credentials' => 'nullable|string|max:10000'],
+            'signups' => ['signup.buyer' => 'nullable|boolean', 'signup.lister' => 'nullable|boolean', 'signup.promoter' => 'nullable|boolean'],
             'social' => [],
             'security' => [],
         };
@@ -63,7 +64,7 @@ class SettingsController extends Controller
             if (in_array($key, AppSettings::SECRET_KEYS, true) && ($value === null || $value === '')) {
                 continue; // blank secret = keep the stored one
             }
-            if (str_ends_with($key, 'enabled') || str_ends_with($key, 'test_mode')) {
+            if (str_ends_with($key, 'enabled') || str_ends_with($key, 'test_mode') || str_starts_with($key, 'signup.')) {
                 $value = $request->boolean($input) ? '1' : '0';
             }
             AppSettings::set($key, $value === null ? null : (string) $value);
