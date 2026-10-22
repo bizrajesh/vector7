@@ -1,0 +1,38 @@
+/* "Opening soon" page shown while the site is in maintenance mode (php artisan down --render="errors::503"). */
+@font-face { font-family: "Jakarta"; src: url("../fonts/plus-jakarta-sans-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Jakarta"; src: url("../fonts/plus-jakarta-sans-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Jakarta"; src: url("../fonts/plus-jakarta-sans-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "NotoTamil"; src: url("../fonts/noto-sans-tamil-tamil-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+:root { --navy: #0B1B33; --teal: #0F8F84; --teal-l: #8ACBC5; --gold: #E0B04A; --paper: #FAF8F3; --muted: #4A5568; }
+* { box-sizing: border-box; margin: 0; }
+html, body { min-height: 100%; }
+body {
+    min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); color: var(--navy);
+    font-family: "Jakarta", system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55;
+    background-image: radial-gradient(circle at 85% 10%, rgba(15,143,132,.10), transparent 40%), radial-gradient(circle at 10% 90%, rgba(224,176,74,.12), transparent 45%);
+}
+.wrap { position: relative; flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 72px 24px 40px; }
+.logo { display: block; width: 220px; height: auto; }
+.eyebrow { margin-top: 56px; font-size: 13px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--teal); }
+h1 { margin-top: 14px; font-size: clamp(32px, 6vw, 54px); font-weight: 800; line-height: 1.08; letter-spacing: -.02em; }
+h1 span { color: var(--teal); }
+.lead { margin-top: 22px; max-width: 58ch; font-size: 18px; color: var(--muted); }
+.ta { margin-top: 14px; max-width: 660px; font-family: "NotoTamil", "Jakarta", sans-serif; font-size: 16px; color: var(--muted); }
+.points { list-style: none; padding: 0; margin-top: 32px; display: flex; flex-wrap: wrap; gap: 10px; }
+.points li { padding: 8px 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(11,27,51,.08), inset 0 0 0 1px rgba(11,27,51,.08); font-size: 14px; font-weight: 600; }
+.points li::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; background: var(--teal); vertical-align: 1px; }
+footer { padding: 24px; text-align: center; font-size: 13px; color: var(--muted); }
+
+/* The staircase from the logo, rising slowly at the right edge */
+.stairs { position: absolute; top: 72px; right: 24px; display: grid; gap: 10px; justify-items: end; opacity: .9; }
+.stairs span { display: block; height: 14px; border-radius: 2px; background: var(--teal); animation: rise 3.6s ease-in-out infinite; }
+.stairs span:nth-child(1) { width: 60px; background: var(--navy); animation-delay: 0s; }
+.stairs span:nth-child(2) { width: 34px; margin-right: 0;  animation-delay: .15s; }
+.stairs span:nth-child(3) { width: 34px; margin-right: 14px; opacity: .85; animation-delay: .3s; }
+.stairs span:nth-child(4) { width: 34px; margin-right: 28px; opacity: .7; animation-delay: .45s; }
+.stairs span:nth-child(5) { width: 34px; margin-right: 42px; opacity: .55; animation-delay: .6s; }
+.stairs span:nth-child(6) { width: 34px; margin-right: 56px; opacity: .4; animation-delay: .75s; }
+@keyframes rise { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .stairs span { animation: none; } }
+@media (max-width: 560px) { .wrap { padding-top: 40px; } .stairs { display: none; } .logo { width: 170px; } .eyebrow { margin-top: 40px; } .lead { font-size: 16px; } }
